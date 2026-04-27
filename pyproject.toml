@@ -1,0 +1,41 @@
+[project]
+name = "sanctum-cli"
+version = "0.1.0"
+description = "Unified CLI for Sanctum Core — ticket, article, milestone, invoice, search, artefacts, projects, templates, products, rate cards, workbench, time entries, notifications, and mockups."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+    "pyotp>=2.9",
+]
+
+[project.scripts]
+sanctum = "sanctum_cli.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-httpx>=0.30",
+    "pytest-cov>=4.0",
+    "ruff>=0.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "C4", "SIM"]
+
+[tool.setuptools.packages.find]
+include = ["sanctum_cli*", "sanctum_client*"]
+
+[tool.ruff.format]
+quote-style = "double"
