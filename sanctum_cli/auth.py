@@ -4,9 +4,11 @@ import getpass
 import logging
 import os
 
-from sanctum_client.client import set_api_base, set_api_token, get as api_get, post as api_post
-from sanctum_client.identity import resolve_agent_token, load_agent_tokens
-from sanctum_cli.config import save_token, load_token, get_api_base, get_env_dir
+from sanctum_cli.config import get_api_base, get_env_dir, load_token, save_token
+from sanctum_client.client import get as api_get
+from sanctum_client.client import post as api_post
+from sanctum_client.client import set_api_base, set_api_token
+from sanctum_client.identity import load_agent_tokens, resolve_agent_token
 
 log = logging.getLogger(__name__)
 

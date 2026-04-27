@@ -2,8 +2,8 @@
 
 import click
 
+from sanctum_cli.display import print_error, print_json, print_success
 from sanctum_client.client import post, put
-from sanctum_cli.display import print_json, print_success, print_error
 
 
 @click.group()
@@ -18,7 +18,9 @@ def time_entries() -> None:
 @click.option("--end", "-e", required=True, help="End time (ISO 8601)")
 @click.option("--description", "-d", default="", help="Work description")
 @click.pass_context
-def create_entry(ctx: click.Context, ticket_id: int, start: str, end: str, description: str) -> None:
+def create_entry(
+    ctx: click.Context, ticket_id: int, start: str, end: str, description: str
+) -> None:
     """Create a time entry on a ticket."""
     payload = {"start_time": start, "end_time": end, "description": description}
     result = post(f"/tickets/{ticket_id}/time_entries", json=payload)

@@ -2,8 +2,8 @@
 
 import click
 
-from sanctum_client.client import get, post, put, delete
-from sanctum_cli.display import print_table, print_json, print_error, print_success, print_key_value
+from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_client.client import get, post, put
 
 
 @click.group()
@@ -17,8 +17,17 @@ def tickets() -> None:
 @click.option("--project-id", "-p", required=True, help="Project UUID")
 @click.option("--milestone-id", "-m", default=None, help="Milestone UUID")
 @click.option("--description", "-d", default="", help="Ticket description")
-@click.option("--priority", type=click.Choice(["low", "normal", "high", "critical"]), default="normal")
-@click.option("--ticket-type", type=click.Choice(["bug", "feature", "task", "refactor", "hotfix", "alert", "support", "access", "maintenance", "test"]), default="task")
+@click.option(
+    "--priority", type=click.Choice(["low", "normal", "high", "critical"]), default="normal"
+)
+@click.option(
+    "--ticket-type",
+    type=click.Choice([
+        "bug", "feature", "task", "refactor", "hotfix",
+        "alert", "support", "access", "maintenance", "test",
+    ]),
+    default="task",
+)
 @click.option("--articles", "-A", multiple=True, help="Article IDs to link")
 @click.pass_context
 def create(ctx: click.Context, subject: str, project_id: str, milestone_id: str | None,
@@ -89,7 +98,10 @@ def show(ctx: click.Context, ticket_id: int, comments: bool, articles: bool) -> 
 @click.option("--status", "-s", default=None, help="Filter by status")
 @click.option("--limit", "-l", default=20, type=int, help="Max results")
 @click.pass_context
-def list(ctx: click.Context, project: str | None, milestone: str | None, status: str | None, limit: int) -> None:
+def list(
+    ctx: click.Context, project: str | None, milestone: str | None,
+    status: str | None, limit: int,
+) -> None:
     """List tickets."""
     params: dict = {"limit": str(limit)}
     if project:

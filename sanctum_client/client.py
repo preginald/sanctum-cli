@@ -77,7 +77,10 @@ def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
             last_exc = exc
         if attempt < _MAX_RETRIES - 1:
             wait = 0.5 * (2**attempt)
-            log.warning("Retry %d/%d for %s %s (%.1fs backoff)", attempt + 1, _MAX_RETRIES, method, path, wait)
+            log.warning(
+                "Retry %d/%d for %s %s (%.1fs backoff)",
+                attempt + 1, _MAX_RETRIES, method, path, wait,
+            )
             time.sleep(wait)
 
     if last_exc:
@@ -90,7 +93,10 @@ def _check_upstream(r: httpx.Response, method: str, path: str) -> None:
         token = _current_token
         token_hint = f"{token[:8]}...{token[-4:]}" if len(token) > 12 else "(empty)"
         body = r.text[:200]
-        log.error("UPSTREAM %d | %s %s | token=%s | body=%s", r.status_code, method, path, token_hint, body)
+        log.error(
+            "UPSTREAM %d | %s %s | token=%s | body=%s",
+            r.status_code, method, path, token_hint, body,
+        )
     r.raise_for_status()
 
 

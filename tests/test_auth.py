@@ -1,14 +1,12 @@
 """Tests for authentication and identity resolution."""
 
-import os
 
-import pytest
+from sanctum_cli.config import load_token, save_token
 from sanctum_client.identity import (
-    resolve_agent_token,
-    load_agent_tokens,
     AGENT_TOKEN_MAP,
+    load_agent_tokens,
+    resolve_agent_token,
 )
-from sanctum_cli.config import save_token, load_token
 
 
 class TestAgentTokenResolution:

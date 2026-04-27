@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from typing import Optional
 
 import click
 
@@ -20,23 +19,27 @@ class AliasedGroup(click.Group):
         cmd = super().get_command(ctx, cmd_name)
         if cmd is not None:
             return cmd
-        for name, command in self.commands.items():
+        for _name, command in self.commands.items():
             if hasattr(command, "aliases") and cmd_name in command.aliases:
                 return command
         return None
 
 
 @click.group(cls=AliasedGroup)
-@click.option("--env", "-e", type=click.Choice(["local", "prod"]), default=None, help="API environment")
-@click.option("--agent", "-a", type=str, default=None, help="Agent identity (operator, architect, etc.)")
+@click.option(  # noqa: E501
+    "--env", "-e", type=click.Choice(["local", "prod"]), default=None, help="API environment"
+)
+@click.option(  # noqa: E501
+    "--agent", "-a", type=str, default=None, help="Agent identity (operator, architect, etc.)"
+)
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 @click.option("--json", "output_json", is_flag=True, help="Output raw JSON")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
 def main(
     ctx: click.Context,
-    env: Optional[str],
-    agent: Optional[str],
+    env: str | None,
+    agent: str | None,
     yes: bool,
     output_json: bool,
     debug: bool,
@@ -74,27 +77,27 @@ def version(ctx: click.Context) -> None:
 @main.command()
 @click.option("--env", "-e", type=click.Choice(["local", "prod"]), default=None)
 @click.option("--agent", "-a", type=str, default=None)
-def login(env: Optional[str], agent: Optional[str]) -> None:
+def login(env: str | None, agent: str | None) -> None:
     """Authenticate interactively and save token."""
     ensure_auth(env=env, agent=agent)
     click.echo("Authenticated.")
 
 
-# Import domain command groups
-from sanctum_cli.domains.tickets import tickets
-from sanctum_cli.domains.articles import articles
-from sanctum_cli.domains.milestones import milestones
-from sanctum_cli.domains.invoices import invoices
-from sanctum_cli.domains.search_ import search
-from sanctum_cli.domains.projects import projects
-from sanctum_cli.domains.templates import templates
-from sanctum_cli.domains.products import products
-from sanctum_cli.domains.rate_cards import rate_cards
-from sanctum_cli.domains.workbench import workbench
-from sanctum_cli.domains.time_entries import time_entries
+# ruff: noqa: E402 — domain imports must be after main() definition
 from sanctum_cli.domains.artefacts_ import artefacts
-from sanctum_cli.domains.notify import notify
+from sanctum_cli.domains.articles import articles
+from sanctum_cli.domains.invoices import invoices
+from sanctum_cli.domains.milestones import milestones
 from sanctum_cli.domains.mockups import mockups
+from sanctum_cli.domains.notify import notify
+from sanctum_cli.domains.products import products
+from sanctum_cli.domains.projects import projects
+from sanctum_cli.domains.rate_cards import rate_cards
+from sanctum_cli.domains.search_ import search
+from sanctum_cli.domains.templates import templates
+from sanctum_cli.domains.tickets import tickets
+from sanctum_cli.domains.time_entries import time_entries
+from sanctum_cli.domains.workbench import workbench
 
 main.add_command(tickets)
 main.add_command(articles)
