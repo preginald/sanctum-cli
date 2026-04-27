@@ -23,6 +23,8 @@ def rate_cards() -> None:
 def list(ctx: click.Context, account_id: str | None, tier: str | None, limit: int) -> None:
     """List rate cards."""
     check_command_identity("rate_cards", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("rate_cards", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if account_id:
         params["account_id"] = account_id
@@ -54,6 +56,8 @@ def list(ctx: click.Context, account_id: str | None, tier: str | None, limit: in
 @click.pass_context
 def lookup(ctx: click.Context, account_id: str, tier: str) -> None:
     """Look up effective rate for an account and tier."""
+    check_command_identity("rate_cards", "lookup", ctx.obj.get("resolved_agent"))
+
     check_command_identity("rate_cards", "lookup", ctx.obj.get("resolved_agent"))
     result = get("/rate-cards/lookup", params={"account_id": account_id, "tier": tier})
     if ctx.obj.get("output_json"):

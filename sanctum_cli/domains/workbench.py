@@ -20,6 +20,8 @@ def workbench() -> None:
 def list(ctx: click.Context) -> None:
     """List pinned projects on the workbench."""
     check_command_identity("workbench", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("workbench", "list", ctx.obj.get("resolved_agent"))
     result = get("/workbench")
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -46,6 +48,8 @@ def list(ctx: click.Context) -> None:
 def pin(ctx: click.Context, project_id: str) -> None:
     """Pin a project to the workbench."""
     check_command_identity("workbench", "pin", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("workbench", "pin", ctx.obj.get("resolved_agent"))
     post("/workbench/pin", json={"project_id": project_id})
     if not ctx.obj.get("output_json"):
         print_success("Project pinned")
@@ -56,6 +60,8 @@ def pin(ctx: click.Context, project_id: str) -> None:
 @click.pass_context
 def unpin(ctx: click.Context, project_id: str) -> None:
     """Remove a project from the workbench."""
+    check_command_identity("workbench", "unpin", ctx.obj.get("resolved_agent"))
+
     check_command_identity("workbench", "unpin", ctx.obj.get("resolved_agent"))
     delete(f"/workbench/pin/{project_id}")
     if not ctx.obj.get("output_json"):

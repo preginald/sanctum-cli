@@ -17,6 +17,8 @@ from sanctum_client.client import get
 def search(ctx: click.Context, query: str, entity_type: str | None, limit: int) -> None:
     """Cross-entity search across tickets, articles, clients, and more."""
     check_command_identity("search", "search", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("search", "search", ctx.obj.get("resolved_agent"))
     params: dict = {"q": query, "limit": str(limit)}
     if entity_type:
         params["type"] = entity_type

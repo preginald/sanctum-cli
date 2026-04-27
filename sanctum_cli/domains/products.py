@@ -22,6 +22,8 @@ def products() -> None:
 def list(ctx: click.Context, product_type: str | None, limit: int) -> None:
     """List products/services."""
     check_command_identity("products", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("products", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if product_type:
         params["product_type"] = product_type

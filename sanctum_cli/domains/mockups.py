@@ -22,6 +22,8 @@ def mockups() -> None:
 def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
     """List mockups."""
     check_command_identity("mockups", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("mockups", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if ticket_id:
         params["ticket_id"] = str(ticket_id)

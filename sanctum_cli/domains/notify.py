@@ -22,6 +22,8 @@ def notify() -> None:
 def list(ctx: click.Context, status: str | None, limit: int) -> None:
     """List notifications."""
     check_command_identity("notify", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("notify", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if status:
         params["status"] = status

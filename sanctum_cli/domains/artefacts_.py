@@ -21,6 +21,8 @@ def artefacts() -> None:
 def show(ctx: click.Context, artefact_id: str) -> None:
     """Show artefact details."""
     check_command_identity("artefacts", "show", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("artefacts", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/artefacts/{artefact_id}")
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -43,6 +45,8 @@ def show(ctx: click.Context, artefact_id: str) -> None:
 @click.pass_context
 def list(ctx: click.Context, category: str | None, limit: int) -> None:
     """List artefacts."""
+    check_command_identity("artefacts", "list", ctx.obj.get("resolved_agent"))
+
     check_command_identity("artefacts", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if category:
@@ -79,6 +83,8 @@ def create(
     ctx: click.Context, name: str, artefact_type: str, url: str | None, description: str
 ) -> None:
     """Create a new artefact."""
+    check_command_identity("artefacts", "create", ctx.obj.get("resolved_agent"))
+
     check_command_identity("artefacts", "create", ctx.obj.get("resolved_agent"))
     payload: dict = {"name": name, "artefact_type": artefact_type}
     if url:
