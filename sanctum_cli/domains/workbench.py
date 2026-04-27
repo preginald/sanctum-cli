@@ -2,8 +2,8 @@
 
 import click
 
-from sanctum_client.client import get, post, delete
-from sanctum_cli.display import print_table, print_json, print_success
+from sanctum_cli.display import print_json, print_success, print_table
+from sanctum_client.client import delete, get, post
 
 
 @click.group()
@@ -41,7 +41,7 @@ def list(ctx: click.Context) -> None:
 @click.pass_context
 def pin(ctx: click.Context, project_id: str) -> None:
     """Pin a project to the workbench."""
-    result = post("/workbench/pin", json={"project_id": project_id})
+    post("/workbench/pin", json={"project_id": project_id})
     if not ctx.obj.get("output_json"):
         print_success("Project pinned")
 
@@ -51,6 +51,6 @@ def pin(ctx: click.Context, project_id: str) -> None:
 @click.pass_context
 def unpin(ctx: click.Context, project_id: str) -> None:
     """Remove a project from the workbench."""
-    result = delete(f"/workbench/pin/{project_id}")
+    delete(f"/workbench/pin/{project_id}")
     if not ctx.obj.get("output_json"):
         print_success("Project unpinned")

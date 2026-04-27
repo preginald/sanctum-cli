@@ -1,7 +1,6 @@
 """Configuration management — ~/.sanctum/ directory, profiles, token files."""
 
 import json
-import os
 from pathlib import Path
 
 DEFAULT_CONFIG_DIR = Path.home() / ".sanctum"

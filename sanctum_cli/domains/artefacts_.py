@@ -2,8 +2,8 @@
 
 import click
 
+from sanctum_cli.display import print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post
-from sanctum_cli.display import print_table, print_json, print_success, print_key_value
 
 
 @click.group()
@@ -70,7 +70,9 @@ def list(ctx: click.Context, category: str | None, limit: int) -> None:
 @click.option("--url", "-u", default=None, help="Artefact URL (for url type)")
 @click.option("--description", "-d", default="", help="Description")
 @click.pass_context
-def create(ctx: click.Context, name: str, artefact_type: str, url: str | None, description: str) -> None:
+def create(
+    ctx: click.Context, name: str, artefact_type: str, url: str | None, description: str
+) -> None:
     """Create a new artefact."""
     payload: dict = {"name": name, "artefact_type": artefact_type}
     if url:

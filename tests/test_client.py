@@ -1,15 +1,12 @@
 """Tests for the shared HTTP client."""
 
-import pytest
-import httpx
 from sanctum_client.client import (
+    delete,
     get,
     post,
     put,
-    delete,
-    set_api_token,
     set_api_base,
-    close_client,
+    set_api_token,
 )
 
 

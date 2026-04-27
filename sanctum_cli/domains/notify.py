@@ -2,8 +2,8 @@
 
 import click
 
-from sanctum_client.client import get, post
-from sanctum_cli.display import print_table, print_json, print_success
+from sanctum_cli.display import print_json, print_table
+from sanctum_client.client import get
 
 
 @click.group()
