@@ -1,5 +1,7 @@
 """Notification domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -28,7 +30,7 @@ def list(ctx: click.Context, status: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    notes = result if isinstance(result, list) else result.get("notifications", [])
+    notes = result if isinstance(result, builtins.list) else result.get("notifications", [])
     if not notes:
         click.echo("No notifications found.")
         return

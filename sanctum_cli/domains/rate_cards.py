@@ -1,5 +1,7 @@
 """Rate card domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -31,7 +33,7 @@ def list(ctx: click.Context, account_id: str | None, tier: str | None, limit: in
         print_json(result)
         return
 
-    cards = result if isinstance(result, list) else result.get("rate_cards", [])
+    cards = result if isinstance(result, builtins.list) else result.get("rate_cards", [])
     if not cards:
         click.echo("No rate cards found.")
         return

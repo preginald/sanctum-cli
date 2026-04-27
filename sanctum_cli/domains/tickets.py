@@ -1,5 +1,7 @@
 """Ticket domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
@@ -116,7 +118,7 @@ def list(
         print_json(result)
         return
 
-    tickets_list = result if isinstance(result, list) else result.get("tickets", [])
+    tickets_list = result if isinstance(result, builtins.list) else result.get("tickets", [])
     if not tickets_list:
         click.echo("No tickets found.")
         return

@@ -1,5 +1,7 @@
 """Workbench domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -23,7 +25,7 @@ def list(ctx: click.Context) -> None:
         print_json(result)
         return
 
-    projects = result if isinstance(result, list) else result.get("projects", [])
+    projects = result if isinstance(result, builtins.list) else result.get("projects", [])
     if not projects:
         click.echo("No pinned projects.")
         return

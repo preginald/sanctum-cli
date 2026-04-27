@@ -1,5 +1,7 @@
 """Artefact domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -50,7 +52,7 @@ def list(ctx: click.Context, category: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    artefacts_list = result if isinstance(result, list) else result.get("artefacts", [])
+    artefacts_list = result if isinstance(result, builtins.list) else result.get("artefacts", [])
     if not artefacts_list:
         click.echo("No artefacts found.")
         return

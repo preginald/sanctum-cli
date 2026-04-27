@@ -1,5 +1,7 @@
 """Template domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -28,7 +30,7 @@ def list(ctx: click.Context, template_type: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    templates_list = result if isinstance(result, list) else result.get("templates", [])
+    templates_list = result if isinstance(result, builtins.list) else result.get("templates", [])
     if not templates_list:
         click.echo("No templates found.")
         return

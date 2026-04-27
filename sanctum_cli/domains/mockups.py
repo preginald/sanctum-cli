@@ -1,5 +1,7 @@
 """Mockup domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -28,7 +30,7 @@ def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
         print_json(result)
         return
 
-    mockups_list = result if isinstance(result, list) else result.get("artefacts", [])
+    mockups_list = result if isinstance(result, builtins.list) else result.get("artefacts", [])
     if not mockups_list:
         click.echo("No mockups found.")
         return

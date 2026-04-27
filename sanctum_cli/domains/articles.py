@@ -1,5 +1,7 @@
 """Article domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -48,7 +50,7 @@ def list(ctx: click.Context, limit: int) -> None:
         print_json(result)
         return
 
-    articles_list = result if isinstance(result, list) else result.get("articles", [])
+    articles_list = result if isinstance(result, builtins.list) else result.get("articles", [])
     if not articles_list:
         click.echo("No articles found.")
         return

@@ -1,5 +1,7 @@
 """Search domain command."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -24,7 +26,7 @@ def search(ctx: click.Context, query: str, entity_type: str | None, limit: int) 
         print_json(result)
         return
 
-    results = result if isinstance(result, list) else result.get("results", [])
+    results = result if isinstance(result, builtins.list) else result.get("results", [])
     if not results:
         click.echo("No results found.")
         return

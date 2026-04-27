@@ -1,5 +1,7 @@
 """Milestone domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -24,7 +26,7 @@ def list(ctx: click.Context, project_id: str) -> None:
         print_json(result)
         return
 
-    milestones_list = result if isinstance(result, list) else result.get("milestones", [])
+    milestones_list = result if isinstance(result, builtins.list) else result.get("milestones", [])
     if not milestones_list:
         click.echo("No milestones found.")
         return

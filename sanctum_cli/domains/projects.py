@@ -1,5 +1,7 @@
 """Project domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -24,7 +26,7 @@ def list(ctx: click.Context, limit: int) -> None:
         print_json(result)
         return
 
-    projects_list = result if isinstance(result, list) else result.get("projects", [])
+    projects_list = result if isinstance(result, builtins.list) else result.get("projects", [])
     if not projects_list:
         click.echo("No projects found.")
         return

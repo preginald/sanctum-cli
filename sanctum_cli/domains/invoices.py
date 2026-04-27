@@ -1,5 +1,7 @@
 """Invoice domain commands."""
 
+import builtins
+
 import click
 
 from sanctum_cli.auth import check_command_identity
@@ -50,7 +52,7 @@ def list(ctx: click.Context, status: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    invoices_list = result if isinstance(result, list) else result.get("invoices", [])
+    invoices_list = result if isinstance(result, builtins.list) else result.get("invoices", [])
     if not invoices_list:
         click.echo("No invoices found.")
         return
