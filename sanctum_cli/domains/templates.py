@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 from sanctum_client.client import get
 
@@ -18,6 +19,7 @@ def templates() -> None:
 @click.pass_context
 def list(ctx: click.Context, template_type: str | None, limit: int) -> None:
     """List available templates."""
+    check_command_identity("templates", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if template_type:
         params["template_type"] = template_type
@@ -47,6 +49,7 @@ def list(ctx: click.Context, template_type: str | None, limit: int) -> None:
 @click.pass_context
 def show(ctx: click.Context, template_id: str) -> None:
     """Show template with its full section/item tree."""
+    check_command_identity("templates", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/templates/{template_id}")
     if ctx.obj.get("output_json"):
         print_json(result)

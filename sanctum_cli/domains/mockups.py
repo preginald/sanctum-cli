@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 from sanctum_client.client import get
 
@@ -18,6 +19,7 @@ def mockups() -> None:
 @click.pass_context
 def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
     """List mockups."""
+    check_command_identity("mockups", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if ticket_id:
         params["ticket_id"] = str(ticket_id)

@@ -13,8 +13,10 @@ def temp_home(monkeypatch):
         sanctum_dir = Path(tmp) / ".sanctum"
         monkeypatch.setattr("sanctum_cli.config.DEFAULT_CONFIG_DIR", sanctum_dir)
         monkeypatch.setattr("sanctum_cli.config.DEFAULT_TOKENS_DIR", sanctum_dir / "tokens")
+        monkeypatch.setattr("sanctum_cli.config.USER_TOKENS_DIR", sanctum_dir / "users")
         sanctum_dir.mkdir(parents=True, exist_ok=True)
         (sanctum_dir / "tokens").mkdir(exist_ok=True)
+        (sanctum_dir / "users").mkdir(exist_ok=True)
         yield sanctum_dir
 
 
@@ -32,6 +34,10 @@ def mock_agent_tokens(monkeypatch):
     tokens = {
         "SANCTUM_TOKEN_OPERATOR": "sntm_op_token",
         "SANCTUM_TOKEN_ARCHITECT": "sntm_arch_token",
+        "SANCTUM_TOKEN_SURGEON": "sntm_surgeon_token",
+        "SANCTUM_TOKEN_SCRIBE": "sntm_scribe_token",
+        "SANCTUM_TOKEN_SENTINEL": "sntm_sentinel_token",
+        "SANCTUM_TOKEN_GUARDIAN": "sntm_guardian_token",
     }
     for k, v in tokens.items():
         monkeypatch.setenv(k, v)

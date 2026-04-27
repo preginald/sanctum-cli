@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 from sanctum_client.client import get
 
@@ -18,6 +19,7 @@ def notify() -> None:
 @click.pass_context
 def list(ctx: click.Context, status: str | None, limit: int) -> None:
     """List notifications."""
+    check_command_identity("notify", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if status:
         params["status"] = status

@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_key_value, print_table
 from sanctum_client.client import get
 
@@ -17,6 +18,7 @@ def invoices() -> None:
 @click.pass_context
 def show(ctx: click.Context, invoice_id: str) -> None:
     """Show invoice details."""
+    check_command_identity("invoices", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/invoices/{invoice_id}")
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -39,6 +41,7 @@ def show(ctx: click.Context, invoice_id: str) -> None:
 @click.pass_context
 def list(ctx: click.Context, status: str | None, limit: int) -> None:
     """List invoices."""
+    check_command_identity("invoices", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if status:
         params["status"] = status

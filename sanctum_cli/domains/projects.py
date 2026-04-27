@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_key_value, print_table
 from sanctum_client.client import get
 
@@ -17,6 +18,7 @@ def projects() -> None:
 @click.pass_context
 def list(ctx: click.Context, limit: int) -> None:
     """List projects."""
+    check_command_identity("projects", "list", ctx.obj.get("resolved_agent"))
     result = get("/projects", params={"limit": str(limit)})
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -43,6 +45,7 @@ def list(ctx: click.Context, limit: int) -> None:
 @click.pass_context
 def show(ctx: click.Context, project_id: str, expand: str | None) -> None:
     """Show project details."""
+    check_command_identity("projects", "show", ctx.obj.get("resolved_agent"))
     params: dict = {}
     if expand:
         params["expand"] = expand
@@ -66,6 +69,7 @@ def show(ctx: click.Context, project_id: str, expand: str | None) -> None:
 @click.pass_context
 def overview(ctx: click.Context, project_id: str) -> None:
     """Get project overview with tickets grouped by milestone."""
+    check_command_identity("projects", "overview", ctx.obj.get("resolved_agent"))
     result = get(f"/projects/{project_id}", params={"expand": "overview"})
     if ctx.obj.get("output_json"):
         print_json(result)

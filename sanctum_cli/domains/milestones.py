@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_key_value, print_table
 from sanctum_client.client import get
 
@@ -17,6 +18,7 @@ def milestones() -> None:
 @click.pass_context
 def list(ctx: click.Context, project_id: str) -> None:
     """List milestones for a project."""
+    check_command_identity("milestones", "list", ctx.obj.get("resolved_agent"))
     result = get("/milestones", params={"project_id": project_id})
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -43,6 +45,7 @@ def list(ctx: click.Context, project_id: str) -> None:
 @click.pass_context
 def show(ctx: click.Context, milestone_id: str) -> None:
     """Show milestone details."""
+    check_command_identity("milestones", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/milestones/{milestone_id}")
     if ctx.obj.get("output_json"):
         print_json(result)

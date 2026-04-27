@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post
 
@@ -17,6 +18,7 @@ def articles() -> None:
 @click.pass_context
 def show(ctx: click.Context, slug_or_id: str) -> None:
     """Show an article by slug (DOC-009) or UUID."""
+    check_command_identity("articles", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/articles/{slug_or_id}")
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -40,6 +42,7 @@ def show(ctx: click.Context, slug_or_id: str) -> None:
 @click.pass_context
 def list(ctx: click.Context, limit: int) -> None:
     """List all articles."""
+    check_command_identity("articles", "list", ctx.obj.get("resolved_agent"))
     result = get("/articles", params={"limit": str(limit)})
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -69,6 +72,7 @@ def list(ctx: click.Context, limit: int) -> None:
 @click.pass_context
 def create(ctx: click.Context, title: str, slug: str, identifier: str, category: str) -> None:
     """Create a new article."""
+    check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
     payload = {
         "title": title,
         "slug": slug,

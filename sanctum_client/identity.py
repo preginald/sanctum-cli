@@ -22,6 +22,7 @@ TOKEN_ENV_MAP = {
     "sanctum-chat": "SANCTUM_TOKEN_CHAT",
     "sanctum-hermes": "SANCTUM_TOKEN_HERMES",
     "sanctum-mock": "SANCTUM_TOKEN_MOCK",
+    "sanctum-guardian": "SANCTUM_TOKEN_GUARDIAN",
 }
 
 AGENT_ALIASES = {
@@ -38,6 +39,7 @@ SHORT_NAMES = {
     "chat": "sanctum-chat",
     "hermes": "sanctum-hermes",
     "mock": "sanctum-mock",
+    "guardian": "sanctum-guardian",
 }
 
 AGENT_TOKEN_MAP: dict[str, str] = {}

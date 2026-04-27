@@ -1,0 +1,95 @@
+"""Domain-to-agent identity map.
+
+Maps each domain command to the expected agent identity.
+Commands with a None value accept any registered agent.
+The map is consulted before executing any command — if the current
+agent doesn't match, a warning is emitted (soft enforcement).
+
+Hard block: --agent operator is never accepted. Humans use --user.
+"""
+
+DOMAIN_AGENT_MAP: dict[str, str | None] = {
+    # tickets
+    "tickets.create": "surgeon",
+    "tickets.show": None,
+    "tickets.list": None,
+    "tickets.comment": "surgeon",
+    "tickets.update": "surgeon",
+    "tickets.resolve": "operator",
+    # articles
+    "articles.show": None,
+    "articles.list": None,
+    "articles.create": "scribe",
+    "articles.update": "scribe",
+    # milestones
+    "milestones.list": None,
+    "milestones.show": None,
+    # invoices
+    "invoices.show": "oracle",
+    "invoices.list": "oracle",
+    # search
+    "search.search": None,
+    # projects
+    "projects.list": None,
+    "projects.show": None,
+    "projects.overview": None,
+    # templates
+    "templates.list": None,
+    "templates.show": None,
+    # products
+    "products.list": None,
+    # rate_cards
+    "rate_cards.list": None,
+    "rate_cards.lookup": None,
+    # workbench
+    "workbench.list": None,
+    "workbench.pin": None,
+    "workbench.unpin": None,
+    # time_entries
+    "time_entries.create": "surgeon",
+    "time_entries.update": "surgeon",
+    # artefacts
+    "artefacts.show": None,
+    "artefacts.list": None,
+    "artefacts.create": "surgeon",
+    # notify
+    "notify.list": "scribe",
+    # mockups
+    "mockups.list": None,
+}
+
+
+def check_agent_for(domain: str, command: str, current_agent: str | None) -> str | None:
+    """Check if the current agent is appropriate for the given domain command.
+
+    Returns None if OK, or an error message string if the agent should not be used.
+    """
+    key = f"{domain}.{command}"
+    expected = DOMAIN_AGENT_MAP.get(key)
+
+    if expected == "operator" and current_agent == "operator":
+        return None
+
+    if expected == "operator":
+        return None
+
+    if current_agent == "operator":
+        return (
+            f"--agent operator is not allowed for {domain} {command}. "
+            f"Use --agent {expected or '<name>'} or --user <email>."
+        )
+
+    if expected and current_agent and current_agent != expected:
+        return (
+            f"{domain} {command} typically uses --agent {expected}. "
+            f"Current agent is '{current_agent}'. Continue? "
+        )
+
+    return None
+
+
+def suggest_agent_for(domain: str, command: str) -> str | None:
+    """Return the expected agent name for a domain command, or None."""
+    key = f"{domain}.{command}"
+    expected = DOMAIN_AGENT_MAP.get(key)
+    return expected if expected else None
