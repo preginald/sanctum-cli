@@ -86,12 +86,30 @@ from sanctum_cli.domains.articles import articles
 from sanctum_cli.domains.milestones import milestones
 from sanctum_cli.domains.invoices import invoices
 from sanctum_cli.domains.search_ import search
+from sanctum_cli.domains.projects import projects
+from sanctum_cli.domains.templates import templates
+from sanctum_cli.domains.products import products
+from sanctum_cli.domains.rate_cards import rate_cards
+from sanctum_cli.domains.workbench import workbench
+from sanctum_cli.domains.time_entries import time_entries
+from sanctum_cli.domains.artefacts_ import artefacts
+from sanctum_cli.domains.notify import notify
+from sanctum_cli.domains.mockups import mockups
 
 main.add_command(tickets)
 main.add_command(articles)
 main.add_command(milestones)
 main.add_command(invoices)
 main.add_command(search)
+main.add_command(projects)
+main.add_command(templates)
+main.add_command(products)
+main.add_command(rate_cards)
+main.add_command(workbench)
+main.add_command(time_entries)
+main.add_command(artefacts)
+main.add_command(notify)
+main.add_command(mockups)
 
 
 if __name__ == "__main__":

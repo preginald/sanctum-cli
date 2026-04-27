@@ -1,0 +1,56 @@
+"""Workbench domain commands."""
+
+import click
+
+from sanctum_client.client import get, post, delete
+from sanctum_cli.display import print_table, print_json, print_success
+
+
+@click.group()
+def workbench() -> None:
+    """Manage the operator workbench."""
+    pass
+
+
+@workbench.command()
+@click.pass_context
+def list(ctx: click.Context) -> None:
+    """List pinned projects on the workbench."""
+    result = get("/workbench")
+    if ctx.obj.get("output_json"):
+        print_json(result)
+        return
+
+    projects = result if isinstance(result, list) else result.get("projects", [])
+    if not projects:
+        click.echo("No pinned projects.")
+        return
+
+    rows = []
+    for p in projects:
+        rows.append([
+            p.get("name", "")[:50],
+            str(p.get("open_tickets", 0)),
+            p.get("status", ""),
+        ])
+    print_table(["Project", "Open Tickets", "Status"], rows, title="Workbench")
+
+
+@workbench.command()
+@click.argument("project_id")
+@click.pass_context
+def pin(ctx: click.Context, project_id: str) -> None:
+    """Pin a project to the workbench."""
+    result = post("/workbench/pin", json={"project_id": project_id})
+    if not ctx.obj.get("output_json"):
+        print_success("Project pinned")
+
+
+@workbench.command()
+@click.argument("project_id")
+@click.pass_context
+def unpin(ctx: click.Context, project_id: str) -> None:
+    """Remove a project from the workbench."""
+    result = delete(f"/workbench/pin/{project_id}")
+    if not ctx.obj.get("output_json"):
+        print_success("Project unpinned")
