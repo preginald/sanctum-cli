@@ -161,9 +161,10 @@ def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
 @click.option("--subject", default=None, help="New subject")
 @click.option("--priority", type=click.Choice(["low", "normal", "high", "critical"]), default=None)
 @click.option("--assigned-tech-id", default=None, help="Assigned tech UUID")
+@click.option("--resolution-comment-id", default=None, help="Resolution comment UUID")
 @click.pass_context
 def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str | None,
-           priority: str | None, assigned_tech_id: str | None) -> None:
+           priority: str | None, assigned_tech_id: str | None, resolution_comment_id: str | None) -> None:
     """Update a ticket."""
     check_command_identity("tickets", "update", ctx.obj.get("resolved_agent"))
     payload: dict = {}
@@ -175,6 +176,8 @@ def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str 
         payload["priority"] = priority
     if assigned_tech_id:
         payload["assigned_tech_id"] = assigned_tech_id
+    if resolution_comment_id:
+        payload["resolution_comment_id"] = resolution_comment_id
 
     result = put(f"/tickets/{ticket_id}", json=payload)
     if ctx.obj.get("output_json"):
