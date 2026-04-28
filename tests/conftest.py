@@ -32,7 +32,6 @@ def mock_api_token(monkeypatch):
 def mock_agent_tokens(monkeypatch):
     """Set test agent tokens."""
     tokens = {
-        "SANCTUM_TOKEN_OPERATOR": "sntm_op_token",
         "SANCTUM_TOKEN_ARCHITECT": "sntm_arch_token",
         "SANCTUM_TOKEN_SURGEON": "sntm_surgeon_token",
         "SANCTUM_TOKEN_SCRIBE": "sntm_scribe_token",

@@ -12,8 +12,8 @@ from sanctum_client.identity import (
 class TestAgentTokenResolution:
     def test_resolve_known_agent(self, mock_agent_tokens):
         load_agent_tokens()
-        token = resolve_agent_token("operator")
-        assert token == "sntm_op_token"
+        token = resolve_agent_token("surgeon")
+        assert token == "sntm_surgeon_token"
 
     def test_resolve_full_agent_name(self, mock_agent_tokens):
         load_agent_tokens()
@@ -47,8 +47,8 @@ class TestAgentTokenResolution:
 
     def test_load_agent_tokens_populates_map(self, mock_agent_tokens):
         load_agent_tokens()
-        assert "sanctum-operator" in AGENT_TOKEN_MAP
-        assert AGENT_TOKEN_MAP["sanctum-operator"] == "sntm_op_token"
+        assert "sanctum-surgeon" in AGENT_TOKEN_MAP
+        assert AGENT_TOKEN_MAP["sanctum-surgeon"] == "sntm_surgeon_token"
         assert "sanctum-guardian" in AGENT_TOKEN_MAP
 
     def test_no_tokens_falls_back_gracefully(self, monkeypatch):
@@ -107,8 +107,8 @@ class TestIdentityMap:
         assert result is not None
         assert "typically uses" in result.lower()
 
-    def test_agent_check_operator_allowed_on_resolve(self, mock_agent_tokens):
-        result = check_agent_for("tickets", "resolve", "operator")
+    def test_agent_check_architect_allowed_on_resolve(self, mock_agent_tokens):
+        result = check_agent_for("tickets", "resolve", "architect")
         assert result is None
 
     def test_agent_check_none_expected_ok(self, mock_agent_tokens):
