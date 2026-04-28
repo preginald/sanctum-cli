@@ -54,9 +54,11 @@ def ensure_auth(
         if agent.lower() == "operator":
             raise RuntimeError(
                 "The operator identity is reserved for human use only.\n"
-                "  AI agents must use a specific identity. See DOC-111 for the full agent list.\n"
-                "  Available agents: architect, surgeon, sentinel, scribe, oracle, guardian, hermes, chat, mock\n"
-                "  Example: --agent surgeon for tickets, --agent scribe for articles, --agent oracle for queries"
+                "  AI agents must use a specific identity. See DOC-111.\n"
+                "  Available: architect, surgeon, sentinel, scribe,"
+                " oracle, guardian, hermes, chat, mock\n"
+                "  Example: --agent surgeon (tickets),"
+                " --agent scribe (articles), --agent oracle (queries)"
             )
         token = resolve_agent_token(agent)
         if not token:
