@@ -190,13 +190,18 @@ def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str 
 @click.option("--body", "-b", required=True, help="Resolution body (markdown)")
 @click.pass_context
 def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
-    """Resolve a ticket (two-step: update status + post resolution)."""
+    """Resolve a ticket (two-step: post resolution comment, then update status)."""
     check_command_identity("tickets", "resolve", ctx.obj.get("resolved_agent"))
-    put(f"/tickets/{ticket_id}", json={"status": "resolved"})
+
     result = post("/comments", json={"ticket_id": ticket_id, "body": body, "is_resolution": True})
+    comment_id = result.get("id") if isinstance(result, dict) else None
+
+    if comment_id:
+        put(f"/tickets/{ticket_id}", json={"status": "resolved", "resolution_comment_id": comment_id})
+
     if ctx.obj.get("output_json"):
         print_json(result)
-    elif isinstance(result, dict) and "id" in result:
+    elif comment_id:
         print_success(f"Ticket #{ticket_id} resolved")
     else:
         print_error(str(result))
