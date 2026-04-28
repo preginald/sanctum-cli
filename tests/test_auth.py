@@ -102,10 +102,10 @@ class TestIdentityMap:
         result = check_agent_for("tickets", "create", "surgeon")
         assert result is None
 
-    def test_agent_check_operator_blocked(self, mock_agent_tokens):
+    def test_agent_check_operator_unknown(self, mock_agent_tokens):
         result = check_agent_for("tickets", "create", "operator")
         assert result is not None
-        assert "not allowed" in result.lower()
+        assert "typically uses" in result.lower()
 
     def test_agent_check_operator_allowed_on_resolve(self, mock_agent_tokens):
         result = check_agent_for("tickets", "resolve", "operator")
@@ -124,7 +124,7 @@ class TestIdentityMap:
         assert suggest_agent_for("tickets", "create") == "surgeon"
 
     def test_suggest_agent_for_resolve(self):
-        assert suggest_agent_for("tickets", "resolve") == "operator"
+        assert suggest_agent_for("tickets", "resolve") == "architect"
 
     def test_suggest_agent_for_show(self):
         assert suggest_agent_for("tickets", "show") is None
