@@ -90,15 +90,23 @@ def check_command_identity(
     """Validate the current agent is appropriate for the domain command.
 
     Raises SystemExit(1) on hard blocks (operator on non-operator commands).
-    Prints warnings for mismatches.
+    Warns on soft mismatches (non-operator agent on command expecting different agent).
     """
     message = check_agent_for(domain, command, current_agent)
-    if message:
-        import sys
+    if not message:
+        return
 
+    is_hard_block = "not allowed" in message.lower()
+
+    if is_hard_block:
         from sanctum_cli.display import print_error
         print_error(message)
+        import sys
         sys.exit(1)
+
+    # Soft mismatch — warn but proceed
+    from sanctum_cli.display import print_warning
+    print_warning(message)
 
 
 def _interactive_login(api_base: str, email: str) -> str:

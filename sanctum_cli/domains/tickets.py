@@ -146,7 +146,7 @@ def list(
 def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Add a comment to a ticket."""
     check_command_identity("tickets", "comment", ctx.obj.get("resolved_agent"))
-    result = post(f"/tickets/{ticket_id}/comments", json={"body": body})
+    result = post("/comments", json={"ticket_id": ticket_id, "body": body})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
@@ -193,7 +193,7 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Resolve a ticket (two-step: update status + post resolution)."""
     check_command_identity("tickets", "resolve", ctx.obj.get("resolved_agent"))
     put(f"/tickets/{ticket_id}", json={"status": "resolved"})
-    result = post(f"/tickets/{ticket_id}/comments", json={"body": body, "is_resolution": True})
+    result = post("/comments", json={"ticket_id": ticket_id, "body": body, "is_resolution": True})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
