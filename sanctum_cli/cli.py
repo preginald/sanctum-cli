@@ -62,8 +62,10 @@ def main(
     if ctx.invoked_subcommand not in ("login", "version", None):
         if not agent and not user:
             print_error("--agent <name> or --user <email> is required")
-            print_error("Examples: sanctum ticket list --agent surgeon")
-            print_error("          sanctum ticket list --user peter@domain.com")
+            print_error("Available agents: architect, surgeon, sentinel, scribe, oracle, guardian, hermes, chat, mock")
+            print_error("See DOC-111 for the full agent reference and identity guide")
+            print_error("Example: sanctum --agent surgeon tickets list")
+            print_error("         sanctum --user peter@digitalsanctum.com.au tickets list")
             sys.exit(1)
 
         try:

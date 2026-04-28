@@ -32,14 +32,16 @@ def ensure_auth(
     env: str | None = None,
     agent: str | None = None,
     user: str | None = None,
-) -> None:
+) -> str | None:
     """Ensure we have a valid API token.
 
     Exactly one of --agent or --user must be provided.
 
     Resolution:
-    1. --agent → resolve_agent_token(agent) → SANCTUM_TOKEN_<AGENT>
-    2. --user → load_user_token(email) or interactive_login()
+    1. --agent -> resolve_agent_token(agent) -> SANCTUM_TOKEN_<AGENT>
+    2. --user -> load_user_token(email) or interactive_login()
+
+    Returns the resolved agent name, or None if using --user.
     """
     api_base, profile = resolve_env(env)
     set_api_base(api_base)
@@ -49,6 +51,13 @@ def ensure_auth(
     resolved_agent: str | None = agent
 
     if agent:
+        if agent.lower() == "operator":
+            raise RuntimeError(
+                "The operator identity is reserved for human use only.\n"
+                "  AI agents must use a specific identity. See DOC-111 for the full agent list.\n"
+                "  Available agents: architect, surgeon, sentinel, scribe, oracle, guardian, hermes, chat, mock\n"
+                "  Example: --agent surgeon for tickets, --agent scribe for articles, --agent oracle for queries"
+            )
         token = resolve_agent_token(agent)
         if not token:
             raise RuntimeError(
