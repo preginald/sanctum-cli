@@ -1,6 +1,7 @@
 """Article domain commands."""
 
 import builtins
+from pathlib import Path
 
 import click
 
@@ -17,13 +18,15 @@ def articles() -> None:
 
 @articles.command()
 @click.argument("slug_or_id")
+@click.option("--content", is_flag=True, help="Include article content")
 @click.pass_context
-def show(ctx: click.Context, slug_or_id: str) -> None:
+def show(ctx: click.Context, slug_or_id: str, content: bool) -> None:
     """Show an article by slug (DOC-009) or UUID."""
     check_command_identity("articles", "show", ctx.obj.get("resolved_agent"))
 
     check_command_identity("articles", "show", ctx.obj.get("resolved_agent"))
-    result = get(f"/articles/{slug_or_id}")
+    params = {"expand": "content"} if content else None
+    result = get(f"/articles/{slug_or_id}", params=params)
     if ctx.obj.get("output_json"):
         print_json(result)
         return
@@ -75,8 +78,9 @@ def list(ctx: click.Context, limit: int) -> None:
 @click.option("--slug", "-s", required=True, help="URL-friendly slug")
 @click.option("--identifier", "-i", required=True, help="Identifier (e.g. DOC-001)")
 @click.option("--category", "-c", default="Knowledge Base", help="Article category")
+@click.option("--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file")
 @click.pass_context
-def create(ctx: click.Context, title: str, slug: str, identifier: str, category: str) -> None:
+def create(ctx: click.Context, title: str, slug: str, identifier: str, category: str, file: str | None) -> None:
     """Create a new article."""
     check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
 
@@ -86,6 +90,7 @@ def create(ctx: click.Context, title: str, slug: str, identifier: str, category:
         "slug": slug,
         "identifier": identifier,
         "category": category,
+        "content": Path(file).read_text() if file else "",
     }
     result = post("/articles", json=payload)
     if ctx.obj.get("output_json"):

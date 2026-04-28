@@ -190,6 +190,22 @@ def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str 
 
 @tickets.command()
 @click.argument("ticket_id", type=int)
+@click.argument("article_id")
+@click.pass_context
+def link_article(ctx: click.Context, ticket_id: int, article_id: str) -> None:
+    """Link an article to a ticket."""
+    check_command_identity("tickets", "update", ctx.obj.get("resolved_agent"))
+    result = post(f"/tickets/{ticket_id}/articles/{article_id}")
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict):
+        print_success(f"Linked article {article_id} to ticket #{ticket_id}")
+    else:
+        print_error(str(result))
+
+
+@tickets.command()
+@click.argument("ticket_id", type=int)
 @click.option("--body", "-b", required=True, help="Resolution body (markdown)")
 @click.pass_context
 def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
