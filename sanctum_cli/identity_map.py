@@ -30,6 +30,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "projects.list": None,
     "projects.show": None,
     "projects.overview": None,
+    "projects.create": None,
     # templates
     "templates.list": None,
     "templates.show": None,
@@ -53,6 +54,12 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "notify.list": "scribe",
     # mockups
     "mockups.list": None,
+    "mockups.create": "surgeon",
+    "mockups.update": "surgeon",
+    "mockups.delete": "surgeon",
+    # capture_execute
+    "capture_execute.capture": None,
+    "capture_execute.execute": None,
 }
 
 
