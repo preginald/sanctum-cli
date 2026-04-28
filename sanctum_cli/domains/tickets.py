@@ -197,7 +197,10 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
     comment_id = result.get("id") if isinstance(result, dict) else None
 
     if comment_id:
-        put(f"/tickets/{ticket_id}", json={"status": "resolved", "resolution_comment_id": comment_id})
+        put(
+            f"/tickets/{ticket_id}",
+            json={"status": "resolved", "resolution_comment_id": comment_id},
+        )
 
     if ctx.obj.get("output_json"):
         print_json(result)
