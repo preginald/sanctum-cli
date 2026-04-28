@@ -1,7 +1,10 @@
 """Product domain commands."""
 
+import builtins
+
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 from sanctum_client.client import get
 
@@ -18,6 +21,9 @@ def products() -> None:
 @click.pass_context
 def list(ctx: click.Context, product_type: str | None, limit: int) -> None:
     """List products/services."""
+    check_command_identity("products", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("products", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if product_type:
         params["product_type"] = product_type
@@ -26,7 +32,7 @@ def list(ctx: click.Context, product_type: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    products_list = result if isinstance(result, list) else result.get("products", [])
+    products_list = result if isinstance(result, builtins.list) else result.get("products", [])
     if not products_list:
         click.echo("No products found.")
         return

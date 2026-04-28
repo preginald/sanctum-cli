@@ -1,7 +1,10 @@
 """Artefact domain commands."""
 
+import builtins
+
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post
 
@@ -17,6 +20,9 @@ def artefacts() -> None:
 @click.pass_context
 def show(ctx: click.Context, artefact_id: str) -> None:
     """Show artefact details."""
+    check_command_identity("artefacts", "show", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("artefacts", "show", ctx.obj.get("resolved_agent"))
     result = get(f"/artefacts/{artefact_id}")
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -39,6 +45,9 @@ def show(ctx: click.Context, artefact_id: str) -> None:
 @click.pass_context
 def list(ctx: click.Context, category: str | None, limit: int) -> None:
     """List artefacts."""
+    check_command_identity("artefacts", "list", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("artefacts", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if category:
         params["category"] = category
@@ -47,7 +56,7 @@ def list(ctx: click.Context, category: str | None, limit: int) -> None:
         print_json(result)
         return
 
-    artefacts_list = result if isinstance(result, list) else result.get("artefacts", [])
+    artefacts_list = result if isinstance(result, builtins.list) else result.get("artefacts", [])
     if not artefacts_list:
         click.echo("No artefacts found.")
         return
@@ -74,6 +83,9 @@ def create(
     ctx: click.Context, name: str, artefact_type: str, url: str | None, description: str
 ) -> None:
     """Create a new artefact."""
+    check_command_identity("artefacts", "create", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("artefacts", "create", ctx.obj.get("resolved_agent"))
     payload: dict = {"name": name, "artefact_type": artefact_type}
     if url:
         payload["url"] = url

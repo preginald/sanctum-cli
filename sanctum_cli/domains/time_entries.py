@@ -2,6 +2,7 @@
 
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_success
 from sanctum_client.client import post, put
 
@@ -22,6 +23,9 @@ def create_entry(
     ctx: click.Context, ticket_id: int, start: str, end: str, description: str
 ) -> None:
     """Create a time entry on a ticket."""
+    check_command_identity("time_entries", "create", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("time_entries", "create", ctx.obj.get("resolved_agent"))
     payload = {"start_time": start, "end_time": end, "description": description}
     result = post(f"/tickets/{ticket_id}/time_entries", json=payload)
     if ctx.obj.get("output_json"):
@@ -42,6 +46,9 @@ def create_entry(
 def update_entry(ctx: click.Context, entry_id: str, ticket_id: int,
                  start: str | None, end: str | None, description: str | None) -> None:
     """Update a time entry."""
+    check_command_identity("time_entries", "update", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("time_entries", "update", ctx.obj.get("resolved_agent"))
     payload: dict = {}
     if start:
         payload["start_time"] = start

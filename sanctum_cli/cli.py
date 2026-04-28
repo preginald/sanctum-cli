@@ -30,7 +30,10 @@ class AliasedGroup(click.Group):
     "--env", "-e", type=click.Choice(["local", "prod"]), default=None, help="API environment"
 )
 @click.option(  # noqa: E501
-    "--agent", "-a", type=str, default=None, help="Agent identity (operator, architect, etc.)"
+    "--agent", "-a", type=str, default=None, help="Agent identity (surgeon, architect, etc.)"
+)
+@click.option(
+    "--user", "-u", type=str, default=None, help="Human user email (saves PAT to ~/.sanctum/users/)"
 )
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 @click.option("--json", "output_json", is_flag=True, help="Output raw JSON")
@@ -40,6 +43,7 @@ def main(
     ctx: click.Context,
     env: str | None,
     agent: str | None,
+    user: str | None,
     yes: bool,
     output_json: bool,
     debug: bool,
@@ -51,12 +55,20 @@ def main(
     ctx.ensure_object(dict)
     ctx.obj["env"] = env
     ctx.obj["agent"] = agent
+    ctx.obj["user"] = user
     ctx.obj["yes"] = yes
     ctx.obj["output_json"] = output_json
 
     if ctx.invoked_subcommand not in ("login", "version", None):
+        if not agent and not user:
+            print_error("--agent <name> or --user <email> is required")
+            print_error("Examples: sanctum ticket list --agent surgeon")
+            print_error("          sanctum ticket list --user peter@domain.com")
+            sys.exit(1)
+
         try:
-            ensure_auth(env=env, agent=agent)
+            resolved = ensure_auth(env=env, agent=agent, user=user)
+            ctx.obj["resolved_agent"] = resolved
         except Exception as e:
             print_error(f"Authentication failed: {e}")
             sys.exit(1)
@@ -77,9 +89,13 @@ def version(ctx: click.Context) -> None:
 @main.command()
 @click.option("--env", "-e", type=click.Choice(["local", "prod"]), default=None)
 @click.option("--agent", "-a", type=str, default=None)
-def login(env: str | None, agent: str | None) -> None:
+@click.option("--user", "-u", type=str, default=None)
+def login(env: str | None, agent: str | None, user: str | None) -> None:
     """Authenticate interactively and save token."""
-    ensure_auth(env=env, agent=agent)
+    if not agent and not user:
+        print_error("--agent <name> or --user <email> is required")
+        sys.exit(1)
+    ensure_auth(env=env, agent=agent, user=user)
     click.echo("Authenticated.")
 
 

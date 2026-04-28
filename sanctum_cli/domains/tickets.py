@@ -1,7 +1,10 @@
 """Ticket domain commands."""
 
+import builtins
+
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post, put
 
@@ -33,6 +36,7 @@ def tickets() -> None:
 def create(ctx: click.Context, subject: str, project_id: str, milestone_id: str | None,
            description: str, priority: str, ticket_type: str, articles: tuple) -> None:
     """Create a new ticket."""
+    check_command_identity("tickets", "create", ctx.obj.get("resolved_agent"))
     payload = {
         "subject": subject,
         "project_id": project_id,
@@ -62,6 +66,7 @@ def create(ctx: click.Context, subject: str, project_id: str, milestone_id: str 
 @click.pass_context
 def show(ctx: click.Context, ticket_id: int, comments: bool, articles: bool) -> None:
     """Show ticket details."""
+    check_command_identity("tickets", "show", ctx.obj.get("resolved_agent"))
     params = {}
     expand = []
     if comments:
@@ -103,6 +108,7 @@ def list(
     status: str | None, limit: int,
 ) -> None:
     """List tickets."""
+    check_command_identity("tickets", "list", ctx.obj.get("resolved_agent"))
     params: dict = {"limit": str(limit)}
     if project:
         params["project"] = project
@@ -116,7 +122,7 @@ def list(
         print_json(result)
         return
 
-    tickets_list = result if isinstance(result, list) else result.get("tickets", [])
+    tickets_list = result if isinstance(result, builtins.list) else result.get("tickets", [])
     if not tickets_list:
         click.echo("No tickets found.")
         return
@@ -139,7 +145,8 @@ def list(
 @click.pass_context
 def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Add a comment to a ticket."""
-    result = post(f"/tickets/{ticket_id}/comments", json={"body": body})
+    check_command_identity("tickets", "comment", ctx.obj.get("resolved_agent"))
+    result = post("/comments", json={"ticket_id": ticket_id, "body": body})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
@@ -158,6 +165,7 @@ def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
 def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str | None,
            priority: str | None, assigned_tech_id: str | None) -> None:
     """Update a ticket."""
+    check_command_identity("tickets", "update", ctx.obj.get("resolved_agent"))
     payload: dict = {}
     if status:
         payload["status"] = status
@@ -183,8 +191,9 @@ def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str 
 @click.pass_context
 def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Resolve a ticket (two-step: update status + post resolution)."""
+    check_command_identity("tickets", "resolve", ctx.obj.get("resolved_agent"))
     put(f"/tickets/{ticket_id}", json={"status": "resolved"})
-    result = post(f"/tickets/{ticket_id}/comments", json={"body": body, "is_resolution": True})
+    result = post("/comments", json={"ticket_id": ticket_id, "body": body, "is_resolution": True})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:

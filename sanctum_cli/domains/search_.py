@@ -1,7 +1,10 @@
 """Search domain command."""
 
+import builtins
+
 import click
 
+from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 from sanctum_client.client import get
 
@@ -13,6 +16,9 @@ from sanctum_client.client import get
 @click.pass_context
 def search(ctx: click.Context, query: str, entity_type: str | None, limit: int) -> None:
     """Cross-entity search across tickets, articles, clients, and more."""
+    check_command_identity("search", "search", ctx.obj.get("resolved_agent"))
+
+    check_command_identity("search", "search", ctx.obj.get("resolved_agent"))
     params: dict = {"q": query, "limit": str(limit)}
     if entity_type:
         params["type"] = entity_type
@@ -22,7 +28,7 @@ def search(ctx: click.Context, query: str, entity_type: str | None, limit: int) 
         print_json(result)
         return
 
-    results = result if isinstance(result, list) else result.get("results", [])
+    results = result if isinstance(result, builtins.list) else result.get("results", [])
     if not results:
         click.echo("No results found.")
         return
