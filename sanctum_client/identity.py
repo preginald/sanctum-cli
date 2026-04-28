@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 
 TOKEN_ENV_MAP = {
     "sanctum-architect": "SANCTUM_TOKEN_ARCHITECT",
-    "sanctum-operator": "SANCTUM_TOKEN_OPERATOR",
     "sanctum-scribe": "SANCTUM_TOKEN_SCRIBE",
     "sanctum-sentinel": "SANCTUM_TOKEN_SENTINEL",
     "sanctum-surgeon": "SANCTUM_TOKEN_SURGEON",
@@ -26,12 +25,11 @@ TOKEN_ENV_MAP = {
 }
 
 AGENT_ALIASES = {
-    "sanctum-code": "sanctum-operator",
+    "sanctum-code": "sanctum-architect",
 }
 
 SHORT_NAMES = {
     "architect": "sanctum-architect",
-    "operator": "sanctum-operator",
     "scribe": "sanctum-scribe",
     "sentinel": "sanctum-sentinel",
     "surgeon": "sanctum-surgeon",

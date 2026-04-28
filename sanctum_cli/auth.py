@@ -35,13 +35,11 @@ def ensure_auth(
 ) -> None:
     """Ensure we have a valid API token.
 
-    Exactly one of --agent or --user must be provided — the CLI enforces
-    this at the root level. The operator agent is blocked from implicit use.
+    Exactly one of --agent or --user must be provided.
 
     Resolution:
     1. --agent → resolve_agent_token(agent) → SANCTUM_TOKEN_<AGENT>
     2. --user → load_user_token(email) or interactive_login()
-    3. Fallback: SANCTUM_API_TOKEN env var (deprecated, warns)
     """
     api_base, profile = resolve_env(env)
     set_api_base(api_base)
@@ -66,15 +64,6 @@ def ensure_auth(
             save_user_token(user, token)
         resolved_agent = user
 
-    else:
-        token = os.getenv("SANCTUM_API_TOKEN", "")
-        if token:
-            log.warning(
-                "DEPRECATED: SANCTUM_API_TOKEN used without --agent or --user. "
-                "Use --agent <name> or --user <email> for proper attribution."
-            )
-        resolved_agent = "operator"
-
     if not token:
         raise RuntimeError("No authentication token available. Use --agent or --user.")
 
@@ -89,22 +78,12 @@ def check_command_identity(
 ) -> None:
     """Validate the current agent is appropriate for the domain command.
 
-    Raises SystemExit(1) on hard blocks (operator on non-operator commands).
-    Warns on soft mismatches (non-operator agent on command expecting different agent).
+    Warns on agent mismatch but proceeds.
     """
     message = check_agent_for(domain, command, current_agent)
     if not message:
         return
 
-    is_hard_block = "not allowed" in message.lower()
-
-    if is_hard_block:
-        from sanctum_cli.display import print_error
-        print_error(message)
-        import sys
-        sys.exit(1)
-
-    # Soft mismatch — warn but proceed
     from sanctum_cli.display import print_warning
     print_warning(message)
 

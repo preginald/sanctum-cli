@@ -2,10 +2,7 @@
 
 Maps each domain command to the expected agent identity.
 Commands with a None value accept any registered agent.
-The map is consulted before executing any command — if the current
-agent doesn't match, a warning is emitted (soft enforcement).
-
-Hard block: --agent operator is never accepted. Humans use --user.
+The map is consulted before executing every command.
 """
 
 DOMAIN_AGENT_MAP: dict[str, str | None] = {
@@ -15,7 +12,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "tickets.list": None,
     "tickets.comment": "surgeon",
     "tickets.update": "surgeon",
-    "tickets.resolve": "operator",
+    "tickets.resolve": "architect",
     # articles
     "articles.show": None,
     "articles.list": None,
@@ -66,18 +63,6 @@ def check_agent_for(domain: str, command: str, current_agent: str | None) -> str
     """
     key = f"{domain}.{command}"
     expected = DOMAIN_AGENT_MAP.get(key)
-
-    if expected == "operator" and current_agent == "operator":
-        return None
-
-    if expected == "operator":
-        return None
-
-    if current_agent == "operator":
-        return (
-            f"--agent operator is not allowed for {domain} {command}. "
-            f"Use --agent {expected or '<name>'} or --user <email>."
-        )
 
     if expected and current_agent and current_agent != expected:
         return (
