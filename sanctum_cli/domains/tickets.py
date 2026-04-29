@@ -183,7 +183,14 @@ def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str 
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
-        print_success(f"Ticket #{ticket_id} updated")
+        response_status = result.get("status")
+        if status and response_status and response_status != status:
+            print_error(
+                f"Ticket #{ticket_id} status is '{response_status}', "
+                f"not '{status}'. Update may have been rejected."
+            )
+        else:
+            print_success(f"Ticket #{ticket_id} updated")
     else:
         print_error(str(result))
 
@@ -211,6 +218,19 @@ def link_article(ctx: click.Context, ticket_id: int, article_id: str) -> None:
 def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Resolve a ticket (two-step: post resolution comment, then update status)."""
     check_command_identity("tickets", "resolve", ctx.obj.get("resolved_agent"))
+
+    ticket = get(f"/tickets/{ticket_id}")
+    if isinstance(ticket, dict) and ticket.get("error"):
+        print_error(f"Failed to fetch ticket: {ticket}")
+        return
+    available = ticket.get("available_transitions", [])
+    if "resolved" not in available:
+        print_error(
+            f"Cannot resolve ticket #{ticket_id} from "
+            f"'{ticket.get('status')}'. "
+            f"Valid transitions: {available}"
+        )
+        return
 
     result = post("/comments", json={"ticket_id": ticket_id, "body": body, "is_resolution": True})
     comment_id = result.get("id") if isinstance(result, dict) else None
