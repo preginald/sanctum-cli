@@ -34,11 +34,13 @@ def list(ctx: click.Context) -> None:
 
     rows = []
     for p in projects:
-        rows.append([
-            p.get("name", "")[:50],
-            str(p.get("open_tickets", 0)),
-            p.get("status", ""),
-        ])
+        rows.append(
+            [
+                p.get("name", "")[:50],
+                str(p.get("open_tickets", 0)),
+                p.get("status", ""),
+            ]
+        )
     print_table(["Project", "Open Tickets", "Status"], rows, title="Workbench")
 
 

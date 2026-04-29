@@ -58,11 +58,13 @@ def list(ctx: click.Context, limit: int) -> None:
 
     rows = []
     for p in projects_list:
-        rows.append([
-            p.get("name", "")[:50],
-            p.get("status", ""),
-            p.get("account_name", ""),
-        ])
+        rows.append(
+            [
+                p.get("name", "")[:50],
+                p.get("status", ""),
+                p.get("account_name", ""),
+            ]
+        )
     print_table(["Name", "Status", "Account"], rows, title="Projects")
 
 
@@ -83,14 +85,17 @@ def show(ctx: click.Context, project_id: str, expand: str | None) -> None:
         print_json(result)
         return
 
-    print_key_value({
-        "Name": result.get("name"),
-        "Status": result.get("status"),
-        "Account": result.get("account_name"),
-        "Budget": f"${result.get('budget', '0')}",
-        "Start Date": result.get("start_date"),
-        "Due Date": result.get("due_date"),
-    }, title=f"Project: {result.get('name', '')}")
+    print_key_value(
+        {
+            "Name": result.get("name"),
+            "Status": result.get("status"),
+            "Account": result.get("account_name"),
+            "Budget": f"${result.get('budget', '0')}",
+            "Start Date": result.get("start_date"),
+            "Due Date": result.get("due_date"),
+        },
+        title=f"Project: {result.get('name', '')}",
+    )
 
 
 @projects.command()
@@ -118,7 +123,8 @@ def overview(ctx: click.Context, project_id: str) -> None:
 @click.option("--account-id", "-a", required=True, help="Account UUID")
 @click.option("--description", "-d", default="", help="Project description")
 @click.option(
-    "--status", default="capture",
+    "--status",
+    default="capture",
     type=click.Choice(["capture", "planning", "active"]),
     help="Initial project status (default: capture)",
 )
@@ -126,8 +132,13 @@ def overview(ctx: click.Context, project_id: str) -> None:
 @click.option("--due-date", default=None, help="Due date (YYYY-MM-DD)")
 @click.pass_context
 def create(
-    ctx: click.Context, name: str, account_id: str, description: str,
-    status: str, start_date: str | None, due_date: str | None,
+    ctx: click.Context,
+    name: str,
+    account_id: str,
+    description: str,
+    status: str,
+    start_date: str | None,
+    due_date: str | None,
 ) -> None:
     """Create a new project."""
     check_command_identity("projects", "create", ctx.obj.get("resolved_agent"))
@@ -166,12 +177,19 @@ def create(
 @click.option("--skip-validation", is_flag=True, help="Skip lifecycle validation")
 @click.pass_context
 def update(
-    ctx: click.Context, project_id: str, name: str | None,
-    status: str | None, description: str | None,
-    market_value: float | None, quoted_price: float | None,
-    discount_reason: str | None, budget: float | None,
-    start_date: str | None, due_date: str | None,
-    account_id: str | None, skip_validation: bool,
+    ctx: click.Context,
+    project_id: str,
+    name: str | None,
+    status: str | None,
+    description: str | None,
+    market_value: float | None,
+    quoted_price: float | None,
+    discount_reason: str | None,
+    budget: float | None,
+    start_date: str | None,
+    due_date: str | None,
+    account_id: str | None,
+    skip_validation: bool,
 ) -> None:
     """Update a project's fields."""
     check_command_identity("projects", "update", ctx.obj.get("resolved_agent"))

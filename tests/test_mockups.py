@@ -12,14 +12,16 @@ class TestMockupsList:
         httpx_mock.add_response(
             method="GET",
             url=f"{_MOCKUP_URL}?limit=20&category=mockup",
-            json={"artefacts": [
-                {
-                    "name": "Homepage Hero",
-                    "status": "active",
-                    "links_count": 2,
-                    "created_at": "2026-01-01",
-                },
-            ]},
+            json={
+                "artefacts": [
+                    {
+                        "name": "Homepage Hero",
+                        "status": "active",
+                        "links_count": 2,
+                        "created_at": "2026-01-01",
+                    },
+                ]
+            },
         )
         runner = CliRunner()
         result = runner.invoke(main, ["--agent", "oracle", "mockups", "list"])
@@ -41,18 +43,21 @@ class TestMockupsList:
         httpx_mock.add_response(
             method="GET",
             url=f"{_MOCKUP_URL}?limit=20&category=mockup&ticket_id=3132",
-            json={"artefacts": [
-                {
-                    "name": "Ticket Mockup",
-                    "status": "active",
-                    "links_count": 1,
-                    "created_at": "2026-01-01",
-                },
-            ]},
+            json={
+                "artefacts": [
+                    {
+                        "name": "Ticket Mockup",
+                        "status": "active",
+                        "links_count": 1,
+                        "created_at": "2026-01-01",
+                    },
+                ]
+            },
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, ["--agent", "oracle", "mockups", "list", "--ticket-id", "3132"],
+            main,
+            ["--agent", "oracle", "mockups", "list", "--ticket-id", "3132"],
         )
         assert result.exit_code == 0
         assert "Ticket Mockup" in result.output
@@ -67,7 +72,8 @@ class TestMockupsCreate:
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, ["--agent", "surgeon", "mockups", "create", "--name", "New Design"],
+            main,
+            ["--agent", "surgeon", "mockups", "create", "--name", "New Design"],
         )
         assert result.exit_code == 0
         assert "Mockup created" in result.output
@@ -85,9 +91,16 @@ class TestMockupsCreate:
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, [
-                "--agent", "surgeon", "mockups", "create",
-                "--name", "Ticket Design", "--ticket-id", "3132",
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "mockups",
+                "create",
+                "--name",
+                "Ticket Design",
+                "--ticket-id",
+                "3132",
             ],
         )
         assert result.exit_code == 0
@@ -101,9 +114,15 @@ class TestMockupsCreate:
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, [
-                "--agent", "surgeon", "--json", "mockups", "create",
-                "--name", "JSON Design",
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "--json",
+                "mockups",
+                "create",
+                "--name",
+                "JSON Design",
             ],
         )
         assert result.exit_code == 0
@@ -119,9 +138,15 @@ class TestMockupsUpdate:
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, [
-                "--agent", "surgeon", "mockups", "update",
-                "mockup-uuid-1", "--name", "Renamed Design",
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "mockups",
+                "update",
+                "mockup-uuid-1",
+                "--name",
+                "Renamed Design",
             ],
         )
         assert result.exit_code == 0
@@ -130,7 +155,8 @@ class TestMockupsUpdate:
     def test_update_mockup_no_fields(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["--agent", "surgeon", "mockups", "update", "mockup-uuid-1"],
+            main,
+            ["--agent", "surgeon", "mockups", "update", "mockup-uuid-1"],
         )
         assert result.exit_code == 0
         assert "Nothing to update" in result.output
@@ -145,7 +171,8 @@ class TestMockupsDelete:
         )
         runner = CliRunner()
         result = runner.invoke(
-            main, ["--agent", "surgeon", "mockups", "delete", "mockup-uuid-1"],
+            main,
+            ["--agent", "surgeon", "mockups", "delete", "mockup-uuid-1"],
             input="y\n",
         )
         assert result.exit_code == 0
@@ -154,7 +181,8 @@ class TestMockupsDelete:
     def test_delete_mockup_abort(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["--agent", "surgeon", "mockups", "delete", "mockup-uuid-1"],
+            main,
+            ["--agent", "surgeon", "mockups", "delete", "mockup-uuid-1"],
             input="n\n",
         )
         assert result.exit_code != 0

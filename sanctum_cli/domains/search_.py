@@ -35,10 +35,12 @@ def search(ctx: click.Context, query: str, entity_type: str | None, limit: int) 
 
     rows = []
     for r in results:
-        rows.append([
-            r.get("type", ""),
-            r.get("title", "")[:50],
-            r.get("subtitle", ""),
-            f"{r.get('score', 0):.2f}",
-        ])
+        rows.append(
+            [
+                r.get("type", ""),
+                r.get("title", "")[:50],
+                r.get("subtitle", ""),
+                f"{r.get('score', 0):.2f}",
+            ]
+        )
     print_table(["Type", "Title", "Subtitle", "Score"], rows, title=f"Search: {query}")

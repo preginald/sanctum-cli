@@ -71,6 +71,7 @@ class TestTokenStorage:
 
     def test_token_file_permissions(self, temp_home):
         from sanctum_cli.config import get_token_file
+
         save_token("default", "test_token")
         token_file = get_token_file("default")
         mode = token_file.stat().st_mode & 0o777
@@ -89,6 +90,7 @@ class TestUserTokenStorage:
 
     def test_user_token_file_permissions(self, temp_home):
         from sanctum_cli.config import USER_TOKENS_DIR
+
         save_user_token("peter@test.com", "sntm_pat_secure")
         files = list(USER_TOKENS_DIR.iterdir())
         assert len(files) == 1
@@ -97,7 +99,6 @@ class TestUserTokenStorage:
 
 
 class TestIdentityMap:
-
     def test_agent_check_ok_when_matches(self, mock_agent_tokens):
         result = check_agent_for("tickets", "create", "surgeon")
         assert result is None
@@ -133,8 +134,10 @@ class TestIdentityMap:
 class TestApiBaseResolution:
     def test_default_profile(self):
         from sanctum_cli.config import get_api_base
+
         assert "digitalsanctum.com.au" in get_api_base("default")
 
     def test_local_profile(self):
         from sanctum_cli.config import get_api_base
+
         assert get_api_base("local") == "http://localhost:8000"

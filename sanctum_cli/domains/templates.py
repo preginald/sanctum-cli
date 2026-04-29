@@ -39,12 +39,14 @@ def list(ctx: click.Context, template_type: str | None, limit: int) -> None:
 
     rows = []
     for t in templates_list:
-        rows.append([
-            t.get("name", "")[:50],
-            t.get("template_type", ""),
-            t.get("category", ""),
-            "✓" if t.get("is_active") else "—",
-        ])
+        rows.append(
+            [
+                t.get("name", "")[:50],
+                t.get("template_type", ""),
+                t.get("category", ""),
+                "✓" if t.get("is_active") else "—",
+            ]
+        )
     print_table(["Name", "Type", "Category", "Active"], rows, title="Templates")
 
 

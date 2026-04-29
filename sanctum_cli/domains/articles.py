@@ -45,17 +45,20 @@ def show(ctx: click.Context, slug_or_id: str, content: bool) -> None:
         print_json(result)
         return
 
-    print_key_value({
-        "Identifier": result.get("identifier"),
-        "Title": result.get("title"),
-        "Slug": result.get("slug"),
-        "Category": result.get("category"),
-        "Version": result.get("version"),
-        "Author": result.get("author_name"),
-        "Revision Count": result.get("revision_count"),
-        "Created": result.get("created_at"),
-        "Updated": result.get("updated_at"),
-    }, title=f"Article: {result.get('identifier', slug_or_id)}")
+    print_key_value(
+        {
+            "Identifier": result.get("identifier"),
+            "Title": result.get("title"),
+            "Slug": result.get("slug"),
+            "Category": result.get("category"),
+            "Version": result.get("version"),
+            "Author": result.get("author_name"),
+            "Revision Count": result.get("revision_count"),
+            "Created": result.get("created_at"),
+            "Updated": result.get("updated_at"),
+        },
+        title=f"Article: {result.get('identifier', slug_or_id)}",
+    )
 
 
 @articles.command()
@@ -78,12 +81,14 @@ def list(ctx: click.Context, limit: int) -> None:
 
     rows = []
     for a in articles_list:
-        rows.append([
-            a.get("identifier", ""),
-            a.get("title", "")[:60],
-            a.get("category", ""),
-            a.get("version", ""),
-        ])
+        rows.append(
+            [
+                a.get("identifier", ""),
+                a.get("title", "")[:60],
+                a.get("category", ""),
+                a.get("version", ""),
+            ]
+        )
     print_table(["ID", "Title", "Category", "Version"], rows, title="Articles")
 
 

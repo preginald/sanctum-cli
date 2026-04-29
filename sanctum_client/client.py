@@ -70,16 +70,18 @@ def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
             r = client.request(method, path, **kwargs)
             if r.status_code not in _RETRY_STATUSES:
                 return r
-            last_exc = httpx.HTTPStatusError(
-                f"{r.status_code}", request=r.request, response=r
-            )
+            last_exc = httpx.HTTPStatusError(f"{r.status_code}", request=r.request, response=r)
         except (httpx.ConnectError, httpx.ReadError, httpx.WriteError, httpx.PoolTimeout) as exc:
             last_exc = exc
         if attempt < _MAX_RETRIES - 1:
             wait = 0.5 * (2**attempt)
             log.warning(
                 "Retry %d/%d for %s %s (%.1fs backoff)",
-                attempt + 1, _MAX_RETRIES, method, path, wait,
+                attempt + 1,
+                _MAX_RETRIES,
+                method,
+                path,
+                wait,
             )
             time.sleep(wait)
 
@@ -95,7 +97,11 @@ def _check_upstream(r: httpx.Response, method: str, path: str) -> None:
         body = r.text[:200]
         log.error(
             "UPSTREAM %d | %s %s | token=%s | body=%s",
-            r.status_code, method, path, token_hint, body,
+            r.status_code,
+            method,
+            path,
+            token_hint,
+            body,
         )
     r.raise_for_status()
 

@@ -43,8 +43,14 @@ def create_entry(
 @click.option("--end", "-e", default=None, help="New end time")
 @click.option("--description", "-d", default=None, help="New description")
 @click.pass_context
-def update_entry(ctx: click.Context, entry_id: str, ticket_id: int,
-                 start: str | None, end: str | None, description: str | None) -> None:
+def update_entry(
+    ctx: click.Context,
+    entry_id: str,
+    ticket_id: int,
+    start: str | None,
+    end: str | None,
+    description: str | None,
+) -> None:
     """Update a time entry."""
     check_command_identity("time_entries", "update", ctx.obj.get("resolved_agent"))
 

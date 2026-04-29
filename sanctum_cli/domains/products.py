@@ -39,10 +39,12 @@ def list(ctx: click.Context, product_type: str | None, limit: int) -> None:
 
     rows = []
     for p in products_list:
-        rows.append([
-            p.get("name", "")[:50],
-            p.get("type", ""),
-            f"${p.get('price', '0')}",
-            p.get("billing_frequency", ""),
-        ])
+        rows.append(
+            [
+                p.get("name", "")[:50],
+                p.get("type", ""),
+                f"${p.get('price', '0')}",
+                p.get("billing_frequency", ""),
+            ]
+        )
     print_table(["Name", "Type", "Price", "Billing"], rows, title="Products")

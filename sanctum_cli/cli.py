@@ -70,6 +70,7 @@ def main(
 def version(ctx: click.Context) -> None:
     """Show CLI version."""
     import importlib.metadata
+
     try:
         v = importlib.metadata.version("sanctum-cli")
     except importlib.metadata.PackageNotFoundError:

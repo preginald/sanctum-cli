@@ -96,6 +96,7 @@ def check_command_identity(
         return
 
     from sanctum_cli.display import print_warning
+
     print_warning(message)
 
 
@@ -107,26 +108,31 @@ def _interactive_login(api_base: str, email: str) -> str:
 
     try:
         from sanctum_client.client import get_client
+
         client = get_client()
         _ = client.base_url
     except Exception:
         pass
 
     from sanctum_client.client import API_BASE
+
     old = API_BASE
     try:
         from sanctum_client.client import set_api_base as set_base
+
         set_base(api_base)
         result = api_post("/token", json={"email": email, "password": password})
     finally:
         if old:
             from sanctum_client.client import set_api_base as set_base
+
             set_base(old)
 
     if isinstance(result, dict) and result.get("detail") == "2FA_REQUIRED":
         totp_secret = os.getenv("SANCTUM_TOTP_SECRET", "")
         if totp_secret:
             import pyotp
+
             totp = pyotp.TOTP(totp_secret)
             code = totp.now()
         else:
@@ -137,4 +143,3 @@ def _interactive_login(api_base: str, email: str) -> str:
         return result["access_token"]
 
     raise RuntimeError(f"Authentication failed: {result}")
-

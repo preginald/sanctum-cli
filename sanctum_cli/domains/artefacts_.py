@@ -26,15 +26,18 @@ def show(ctx: click.Context, artefact_id: str) -> None:
         print_json(result)
         return
 
-    print_key_value({
-        "Name": result.get("name"),
-        "Type": result.get("artefact_type"),
-        "Status": result.get("status"),
-        "Category": result.get("category"),
-        "Account": result.get("account_name"),
-        "Links": result.get("links_count"),
-        "Created": result.get("created_at"),
-    }, title=f"Artefact: {result.get('name', '')}")
+    print_key_value(
+        {
+            "Name": result.get("name"),
+            "Type": result.get("artefact_type"),
+            "Status": result.get("status"),
+            "Category": result.get("category"),
+            "Account": result.get("account_name"),
+            "Links": result.get("links_count"),
+            "Created": result.get("created_at"),
+        },
+        title=f"Artefact: {result.get('name', '')}",
+    )
 
 
 @artefacts.command()
@@ -59,27 +62,39 @@ def list(ctx: click.Context, category: str | None, limit: int) -> None:
 
     rows = []
     for a in artefacts_list:
-        rows.append([
-            a.get("name", "")[:50],
-            a.get("artefact_type", ""),
-            a.get("status", ""),
-            str(a.get("links_count", 0)),
-        ])
+        rows.append(
+            [
+                a.get("name", "")[:50],
+                a.get("artefact_type", ""),
+                a.get("status", ""),
+                str(a.get("links_count", 0)),
+            ]
+        )
     print_table(["Name", "Type", "Status", "Links"], rows, title="Artefacts")
 
 
 @artefacts.command()
 @click.option("--name", "-n", required=True, help="Artefact name")
-@click.option("--type", "-t", "artefact_type", required=True,
-              type=click.Choice(["file", "url", "code_path", "document", "credential_ref"]))
+@click.option(
+    "--type",
+    "-t",
+    "artefact_type",
+    required=True,
+    type=click.Choice(["file", "url", "code_path", "document", "credential_ref"]),
+)
 @click.option("--url", "-u", default=None, help="Artefact URL (for url type)")
 @click.option("--description", "-d", default="", help="Description")
 @click.option("--content", default=None, help="Artefact body content")
 @click.option("--mime-type", "mime_type", default=None, help="Content MIME type (e.g. text/html)")
 @click.pass_context
 def create(
-    ctx: click.Context, name: str, artefact_type: str, url: str | None,
-    description: str, content: str | None, mime_type: str | None
+    ctx: click.Context,
+    name: str,
+    artefact_type: str,
+    url: str | None,
+    description: str,
+    content: str | None,
+    mime_type: str | None,
 ) -> None:
     """Create a new artefact."""
     check_command_identity("artefacts", "create", ctx.obj.get("resolved_agent"))
@@ -109,12 +124,15 @@ def create(
             return
         if error:
             from sanctum_cli.display import print_error
+
             print_error(f"Artefact created but content update failed: {error}")
             return
         print_success(f"Artefact created: {artefact_id}")
     elif isinstance(result, dict) and result.get("error"):
         from sanctum_cli.display import print_error
+
         print_error(str(result))
     else:
         from sanctum_cli.display import print_error
+
         print_error(str(result))

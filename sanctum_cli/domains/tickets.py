@@ -10,16 +10,19 @@ from sanctum_cli.group import HelpfulGroup
 from sanctum_client.client import get, post, put
 
 
-@click.group(cls=HelpfulGroup, suggestions={
-    "comments": (
-        "tickets show --comments <id>    View comments inline\n"
-        "tickets comment <id> -b \"...\"  Add a comment"
-    ),
-    "links": (
-        "tickets show --articles <id>     View linked articles inline\n"
-        "tickets link-article <id> <aid>  Link an article"
-    ),
-})
+@click.group(
+    cls=HelpfulGroup,
+    suggestions={
+        "comments": (
+            "tickets show --comments <id>    View comments inline\n"
+            'tickets comment <id> -b "..."  Add a comment'
+        ),
+        "links": (
+            "tickets show --articles <id>     View linked articles inline\n"
+            "tickets link-article <id> <aid>  Link an article"
+        ),
+    },
+)
 def tickets() -> None:
     """Manage tickets."""
     pass
@@ -35,16 +38,34 @@ def tickets() -> None:
 )
 @click.option(
     "--ticket-type",
-    type=click.Choice([
-        "bug", "feature", "task", "refactor", "hotfix",
-        "alert", "support", "access", "maintenance", "test",
-    ]),
+    type=click.Choice(
+        [
+            "bug",
+            "feature",
+            "task",
+            "refactor",
+            "hotfix",
+            "alert",
+            "support",
+            "access",
+            "maintenance",
+            "test",
+        ]
+    ),
     default="task",
 )
 @click.option("--articles", "-A", multiple=True, help="Article IDs to link")
 @click.pass_context
-def create(ctx: click.Context, subject: str, project_id: str, milestone_id: str | None,
-           description: str, priority: str, ticket_type: str, articles: tuple) -> None:
+def create(
+    ctx: click.Context,
+    subject: str,
+    project_id: str,
+    milestone_id: str | None,
+    description: str,
+    priority: str,
+    ticket_type: str,
+    articles: tuple,
+) -> None:
     """Create a new ticket."""
     check_command_identity("tickets", "create", ctx.obj.get("resolved_agent"))
     payload = {
@@ -91,17 +112,20 @@ def show(ctx: click.Context, ticket_id: int, comments: bool, articles: bool) -> 
         print_json(result)
         return
 
-    print_key_value({
-        "ID": result.get("id"),
-        "Subject": result.get("subject"),
-        "Status": result.get("status"),
-        "Priority": result.get("priority"),
-        "Type": result.get("ticket_type"),
-        "Project": result.get("project_name"),
-        "Milestone": result.get("milestone_name"),
-        "Account": result.get("account_name"),
-        "Created": result.get("created_at"),
-    }, title=f"Ticket #{ticket_id}")
+    print_key_value(
+        {
+            "ID": result.get("id"),
+            "Subject": result.get("subject"),
+            "Status": result.get("status"),
+            "Priority": result.get("priority"),
+            "Type": result.get("ticket_type"),
+            "Project": result.get("project_name"),
+            "Milestone": result.get("milestone_name"),
+            "Account": result.get("account_name"),
+            "Created": result.get("created_at"),
+        },
+        title=f"Ticket #{ticket_id}",
+    )
 
     if result.get("description"):
         click.echo(f"\n[bold]Description:[/bold]\n{result['description']}")
@@ -114,8 +138,11 @@ def show(ctx: click.Context, ticket_id: int, comments: bool, articles: bool) -> 
 @click.option("--limit", "-l", default=20, type=int, help="Max results")
 @click.pass_context
 def list(
-    ctx: click.Context, project: str | None, milestone: str | None,
-    status: str | None, limit: int,
+    ctx: click.Context,
+    project: str | None,
+    milestone: str | None,
+    status: str | None,
+    limit: int,
 ) -> None:
     """List tickets."""
     check_command_identity("tickets", "list", ctx.obj.get("resolved_agent"))
@@ -139,13 +166,15 @@ def list(
 
     rows = []
     for t in tickets_list:
-        rows.append([
-            f"#{t.get('id', '')}",
-            t.get("subject", "")[:60],
-            t.get("status", ""),
-            t.get("priority", ""),
-            t.get("ticket_type", ""),
-        ])
+        rows.append(
+            [
+                f"#{t.get('id', '')}",
+                t.get("subject", "")[:60],
+                t.get("status", ""),
+                t.get("priority", ""),
+                t.get("ticket_type", ""),
+            ]
+        )
     print_table(["ID", "Subject", "Status", "Priority", "Type"], rows, title="Tickets")
 
 
@@ -268,9 +297,7 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
         if ctx.obj.get("output_json"):
             print_json({"comment": result, "status_update": update_result})
         else:
-            print_error(
-                f"Comment created but status update failed: {update_result}"
-            )
+            print_error(f"Comment created but status update failed: {update_result}")
         return
 
     if ctx.obj.get("output_json"):

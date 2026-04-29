@@ -41,13 +41,19 @@ def capture(ctx: click.Context, name: str, account_id: str, description: str) ->
 @click.argument("project_id")
 @click.option("--template-id", "-t", default=None, help="Template UUID to apply")
 @click.option(
-    "--variable", "-v", "variables", multiple=True, default=[],
+    "--variable",
+    "-v",
+    "variables",
+    multiple=True,
+    default=[],
     help="Template variables as key=value (repeatable)",
 )
 @click.pass_context
 def execute(
-    ctx: click.Context, project_id: str,
-    template_id: str | None, variables: tuple[str, ...],
+    ctx: click.Context,
+    project_id: str,
+    template_id: str | None,
+    variables: tuple[str, ...],
 ) -> None:
     """Scaffold and activate a captured project."""
     check_command_identity("capture_execute", "execute", ctx.obj.get("resolved_agent"))
@@ -69,11 +75,14 @@ def execute(
     current_status = project.get("status", "capture")
 
     if template_id:
-        tmpl_result = post(f"/templates/{template_id}/apply", json={
-            "account_id": account_id,
-            "project_id": project_id,
-            "variables": var_dict or None,
-        })
+        tmpl_result = post(
+            f"/templates/{template_id}/apply",
+            json={
+                "account_id": account_id,
+                "project_id": project_id,
+                "variables": var_dict or None,
+            },
+        )
         if isinstance(tmpl_result, dict) and tmpl_result.get("error"):
             print_error(f"Template apply failed: {tmpl_result}")
             return

@@ -42,11 +42,13 @@ def list(ctx: click.Context, account_id: str | None, tier: str | None, limit: in
 
     rows = []
     for c in cards:
-        rows.append([
-            c.get("tier", ""),
-            f"${c.get('hourly_rate', '0')}/hr",
-            c.get("account_name", "System Default"),
-        ])
+        rows.append(
+            [
+                c.get("tier", ""),
+                f"${c.get('hourly_rate', '0')}/hr",
+                c.get("account_name", "System Default"),
+            ]
+        )
     print_table(["Tier", "Rate", "Account"], rows, title="Rate Cards")
 
 

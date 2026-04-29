@@ -48,4 +48,5 @@ def clean_client():
     """Reset the HTTP client between tests."""
     yield
     from sanctum_client.client import close_client
+
     close_client()

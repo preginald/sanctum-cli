@@ -39,10 +39,12 @@ def list(ctx: click.Context, status: str | None, limit: int) -> None:
 
     rows = []
     for n in notes:
-        rows.append([
-            n.get("type", "")[:30],
-            n.get("status", ""),
-            n.get("recipient", "")[:30],
-            n.get("created_at", ""),
-        ])
+        rows.append(
+            [
+                n.get("type", "")[:30],
+                n.get("status", ""),
+                n.get("recipient", "")[:30],
+                n.get("created_at", ""),
+            ]
+        )
     print_table(["Type", "Status", "Recipient", "Created"], rows, title="Notifications")

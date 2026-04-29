@@ -40,12 +40,14 @@ def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
 
     rows = []
     for m in mockups_list:
-        rows.append([
-            m.get("name", "")[:50],
-            m.get("status", ""),
-            str(m.get("links_count", 0)),
-            m.get("created_at", ""),
-        ])
+        rows.append(
+            [
+                m.get("name", "")[:50],
+                m.get("status", ""),
+                str(m.get("links_count", 0)),
+                m.get("created_at", ""),
+            ]
+        )
     print_table(["Name", "Status", "Links", "Created"], rows, title="Mockups")
 
 
@@ -53,12 +55,17 @@ def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
 @click.option("--name", "-n", required=True, help="Mockup name")
 @click.option("--ticket-id", "-t", type=int, default=None, help="Link to ticket")
 @click.option("--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Mockup file path")
-@click.option("--type", "artefact_type", default="file",
-              type=click.Choice(["file", "url", "code_path", "document", "credential_ref"]),
-              help="Artefact type")
+@click.option(
+    "--type",
+    "artefact_type",
+    default="file",
+    type=click.Choice(["file", "url", "code_path", "document", "credential_ref"]),
+    help="Artefact type",
+)
 @click.pass_context
-def create(ctx: click.Context, name: str, ticket_id: int | None, file: str | None,
-           artefact_type: str) -> None:
+def create(
+    ctx: click.Context, name: str, ticket_id: int | None, file: str | None, artefact_type: str
+) -> None:
     """Create a new mockup artefact."""
     check_command_identity("mockups", "create", ctx.obj.get("resolved_agent"))
 

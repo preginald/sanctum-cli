@@ -35,12 +35,14 @@ def list(ctx: click.Context, project_id: str) -> None:
 
     rows = []
     for m in milestones_list:
-        rows.append([
-            m.get("name", "")[:50],
-            m.get("status", ""),
-            str(m.get("ticket_count", 0)),
-            str(m.get("sequence", "")),
-        ])
+        rows.append(
+            [
+                m.get("name", "")[:50],
+                m.get("status", ""),
+                str(m.get("ticket_count", 0)),
+                str(m.get("sequence", "")),
+            ]
+        )
     print_table(["Name", "Status", "Tickets", "Seq"], rows, title="Milestones")
 
 
@@ -57,13 +59,16 @@ def show(ctx: click.Context, milestone_id: str) -> None:
         print_json(result)
         return
 
-    print_key_value({
-        "Name": result.get("name"),
-        "Status": result.get("status"),
-        "Due Date": result.get("due_date"),
-        "Sequence": result.get("sequence"),
-        "Ticket Count": result.get("ticket_count"),
-    }, title=f"Milestone: {result.get('name', '')}")
+    print_key_value(
+        {
+            "Name": result.get("name"),
+            "Status": result.get("status"),
+            "Due Date": result.get("due_date"),
+            "Sequence": result.get("sequence"),
+            "Ticket Count": result.get("ticket_count"),
+        },
+        title=f"Milestone: {result.get('name', '')}",
+    )
 
 
 @milestones.command()
