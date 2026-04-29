@@ -6,7 +6,7 @@ import click
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
-from sanctum_client.client import get, post
+from sanctum_client.client import get, post, put
 
 
 @click.group()
@@ -124,5 +124,67 @@ def create(
         print_success(f"Project created: {result['id']}")
         click.echo(f"  Name:   {result['name']}")
         click.echo(f"  Status: {result['status']}")
+    else:
+        print_error(str(result))
+
+
+@projects.command()
+@click.argument("project_id")
+@click.option("--name", "-n", default=None, help="New project name")
+@click.option("--status", "-s", default=None, help="New status")
+@click.option("--description", "-d", default=None, help="New description")
+@click.option("--market-value", "-mv", default=None, type=float, help="Market value")
+@click.option("--quoted-price", "-qp", default=None, type=float, help="Quoted price")
+@click.option("--discount-reason", default=None, help="Discount reason")
+@click.option("--budget", default=None, type=float, help="Budget amount")
+@click.option("--start-date", default=None, help="Start date (YYYY-MM-DD)")
+@click.option("--due-date", default=None, help="Due date (YYYY-MM-DD)")
+@click.option("--account-id", "-a", default=None, help="Account UUID")
+@click.option("--skip-validation", is_flag=True, help="Skip lifecycle validation")
+@click.pass_context
+def update(
+    ctx: click.Context, project_id: str, name: str | None,
+    status: str | None, description: str | None,
+    market_value: float | None, quoted_price: float | None,
+    discount_reason: str | None, budget: float | None,
+    start_date: str | None, due_date: str | None,
+    account_id: str | None, skip_validation: bool,
+) -> None:
+    """Update a project's fields."""
+    check_command_identity("projects", "update", ctx.obj.get("resolved_agent"))
+
+    payload: dict = {}
+    if name is not None:
+        payload["name"] = name
+    if status is not None:
+        payload["status"] = status
+    if description is not None:
+        payload["description"] = description
+    if market_value is not None:
+        payload["market_value"] = market_value
+    if quoted_price is not None:
+        payload["quoted_price"] = quoted_price
+    if discount_reason is not None:
+        payload["discount_reason"] = discount_reason
+    if budget is not None:
+        payload["budget"] = budget
+    if start_date is not None:
+        payload["start_date"] = start_date
+    if due_date is not None:
+        payload["due_date"] = due_date
+    if account_id is not None:
+        payload["account_id"] = account_id
+    if skip_validation:
+        payload["skip_validation"] = True
+
+    if not payload:
+        print_error("Nothing to update. Provide at least one field.")
+        return
+
+    result = put(f"/projects/{project_id}", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Project {project_id} updated")
     else:
         print_error(str(result))
