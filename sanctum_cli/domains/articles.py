@@ -92,9 +92,13 @@ def list(ctx: click.Context, limit: int) -> None:
 @click.option("--slug", "-s", required=True, help="URL-friendly slug")
 @click.option("--identifier", "-i", required=True, help="Identifier (e.g. DOC-001)")
 @click.option("--category", "-c", default="Knowledge Base", help="Article category")
-@click.option("--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file")
+@click.option(
+    "--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file"
+)
 @click.pass_context
-def create(ctx: click.Context, title: str, slug: str, identifier: str, category: str, file: str | None) -> None:
+def create(
+    ctx: click.Context, title: str, slug: str, identifier: str, category: str, file: str | None
+) -> None:
     """Create a new article."""
     check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
 
@@ -118,10 +122,14 @@ def create(ctx: click.Context, title: str, slug: str, identifier: str, category:
 @articles.command()
 @click.argument("slug_or_id")
 @click.option("--title", "-t", default=None, help="New article title")
-@click.option("--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file")
+@click.option(
+    "--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file"
+)
 @click.option("--section", default=None, help="Section heading to patch (requires --file)")
 @click.pass_context
-def update(ctx: click.Context, slug_or_id: str, title: str | None, file: str | None, section: str | None) -> None:
+def update(
+    ctx: click.Context, slug_or_id: str, title: str | None, file: str | None, section: str | None
+) -> None:
     """Update an article by identifier (DOC-009) or UUID.
 
     Use --section to patch a single heading's content without replacing the

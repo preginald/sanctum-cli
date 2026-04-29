@@ -7,25 +7,13 @@ import click
 
 from sanctum_cli.auth import ensure_auth
 from sanctum_cli.display import print_error
+from sanctum_cli.group import HelpfulGroup
 
 logging.basicConfig(level=logging.WARNING, format="%(name)s %(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 
-class AliasedGroup(click.Group):
-    """Click group that supports command aliases via aliases dict on commands."""
-
-    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
-        cmd = super().get_command(ctx, cmd_name)
-        if cmd is not None:
-            return cmd
-        for _name, command in self.commands.items():
-            if hasattr(command, "aliases") and cmd_name in command.aliases:
-                return command
-        return None
-
-
-@click.group(cls=AliasedGroup)
+@click.group(cls=HelpfulGroup)
 @click.option(  # noqa: E501
     "--env", "-e", type=click.Choice(["local", "prod"]), default=None, help="API environment"
 )

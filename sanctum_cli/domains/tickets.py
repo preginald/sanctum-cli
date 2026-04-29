@@ -6,10 +6,20 @@ import click
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_cli.group import HelpfulGroup
 from sanctum_client.client import get, post, put
 
 
-@click.group()
+@click.group(cls=HelpfulGroup, suggestions={
+    "comments": (
+        "tickets show --comments <id>    View comments inline\n"
+        "tickets comment <id> -b \"...\"  Add a comment"
+    ),
+    "links": (
+        "tickets show --articles <id>     View linked articles inline\n"
+        "tickets link-article <id> <aid>  Link an article"
+    ),
+})
 def tickets() -> None:
     """Manage tickets."""
     pass
@@ -163,8 +173,15 @@ def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
 @click.option("--assigned-tech-id", default=None, help="Assigned tech UUID")
 @click.option("--resolution-comment-id", default=None, help="Resolution comment UUID")
 @click.pass_context
-def update(ctx: click.Context, ticket_id: int, status: str | None, subject: str | None,
-           priority: str | None, assigned_tech_id: str | None, resolution_comment_id: str | None) -> None:
+def update(
+    ctx: click.Context,
+    ticket_id: int,
+    status: str | None,
+    subject: str | None,
+    priority: str | None,
+    assigned_tech_id: str | None,
+    resolution_comment_id: str | None,
+) -> None:
     """Update a ticket."""
     check_command_identity("tickets", "update", ctx.obj.get("resolved_agent"))
     payload: dict = {}

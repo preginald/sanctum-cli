@@ -32,9 +32,9 @@ def show(ctx: click.Context, invoice_id: str) -> None:
         "ID": result.get("id"),
         "Description": result.get("description"),
         "Status": result.get("status"),
-        "Amount": f"${result.get('amount', '0')}",
+        "Total Amount": f"${result.get('total_amount', '0')}",
         "Account": result.get("account_name"),
-        "Created": result.get("created_at"),
+        "Created": result.get("generated_at"),
         "Due": result.get("due_date"),
     }, title=f"Invoice: {result.get('description', '')}")
 
@@ -64,9 +64,10 @@ def list(ctx: click.Context, status: str | None, limit: int) -> None:
     rows = []
     for inv in invoices_list:
         rows.append([
+            str(inv.get("id", ""))[:8],
             inv.get("description", "")[:40],
             inv.get("status", ""),
-            f"${inv.get('amount', '0')}",
+            f"${inv.get('total_amount', '0')}",
             inv.get("account_name", ""),
         ])
-    print_table(["Description", "Status", "Amount", "Account"], rows, title="Invoices")
+    print_table(["ID", "Description", "Status", "Amount", "Account"], rows, title="Invoices")

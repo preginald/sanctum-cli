@@ -68,6 +68,47 @@ def show(ctx: click.Context, milestone_id: str) -> None:
 
 @milestones.command()
 @click.argument("milestone_id")
+@click.option("--name", default=None, help="New milestone name")
+@click.option("--status", "-s", default=None, help="New status")
+@click.option("--sequence", type=int, default=None, help="New sequence number")
+@click.option("--description", "-d", default=None, help="New description")
+@click.pass_context
+def update(
+    ctx: click.Context,
+    milestone_id: str,
+    name: str | None,
+    status: str | None,
+    sequence: int | None,
+    description: str | None,
+) -> None:
+    """Update a milestone's fields."""
+    check_command_identity("milestones", "update", ctx.obj.get("resolved_agent"))
+
+    payload: dict = {}
+    if name is not None:
+        payload["name"] = name
+    if status is not None:
+        payload["status"] = status
+    if sequence is not None:
+        payload["sequence"] = sequence
+    if description is not None:
+        payload["description"] = description
+
+    if not payload:
+        print_error("Nothing to update. Provide at least one field.")
+        return
+
+    result = put(f"/milestones/{milestone_id}", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Milestone {milestone_id} updated")
+    else:
+        print_error(str(result))
+
+
+@milestones.command()
+@click.argument("milestone_id")
 @click.option("--status", "-s", default="completed", help="Target status (e.g. active, completed)")
 @click.pass_context
 def complete(ctx: click.Context, milestone_id: str, status: str) -> None:
