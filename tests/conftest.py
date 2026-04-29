@@ -37,6 +37,7 @@ def mock_agent_tokens(monkeypatch):
         "SANCTUM_TOKEN_SCRIBE": "sntm_scribe_token",
         "SANCTUM_TOKEN_SENTINEL": "sntm_sentinel_token",
         "SANCTUM_TOKEN_GUARDIAN": "sntm_guardian_token",
+        "SANCTUM_TOKEN_ORACLE": "sntm_oracle_token",
     }
     for k, v in tokens.items():
         monkeypatch.setenv(k, v)

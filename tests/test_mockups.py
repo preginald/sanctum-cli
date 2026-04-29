@@ -8,7 +8,7 @@ _MOCKUP_URL = "https://core.digitalsanctum.com.au/api/artefacts"
 
 
 class TestMockupsList:
-    def test_list_mockups(self, httpx_mock):
+    def test_list_mockups(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="GET",
             url=f"{_MOCKUP_URL}?limit=20&category=mockup",
@@ -28,7 +28,7 @@ class TestMockupsList:
         assert result.exit_code == 0
         assert "Homepage Hero" in result.output
 
-    def test_list_mockups_empty(self, httpx_mock):
+    def test_list_mockups_empty(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="GET",
             url=f"{_MOCKUP_URL}?limit=20&category=mockup",
@@ -39,7 +39,7 @@ class TestMockupsList:
         assert result.exit_code == 0
         assert "No mockups found" in result.output
 
-    def test_list_mockups_filter_by_ticket(self, httpx_mock):
+    def test_list_mockups_filter_by_ticket(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="GET",
             url=f"{_MOCKUP_URL}?limit=20&category=mockup&ticket_id=3132",
@@ -64,7 +64,7 @@ class TestMockupsList:
 
 
 class TestMockupsCreate:
-    def test_create_mockup(self, httpx_mock):
+    def test_create_mockup(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="POST",
             url=_MOCKUP_URL,
@@ -78,7 +78,7 @@ class TestMockupsCreate:
         assert result.exit_code == 0
         assert "Mockup created" in result.output
 
-    def test_create_mockup_with_ticket(self, httpx_mock):
+    def test_create_mockup_with_ticket(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="POST",
             url=_MOCKUP_URL,
@@ -106,7 +106,7 @@ class TestMockupsCreate:
         assert result.exit_code == 0
         assert "Mockup created" in result.output
 
-    def test_create_mockup_json_output(self, httpx_mock):
+    def test_create_mockup_json_output(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="POST",
             url=_MOCKUP_URL,
@@ -130,7 +130,7 @@ class TestMockupsCreate:
 
 
 class TestMockupsUpdate:
-    def test_update_mockup_name(self, httpx_mock):
+    def test_update_mockup_name(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="PUT",
             url=f"{_MOCKUP_URL}/mockup-uuid-1",
@@ -152,7 +152,7 @@ class TestMockupsUpdate:
         assert result.exit_code == 0
         assert "Mockup mockup-uuid-1 updated" in result.output
 
-    def test_update_mockup_no_fields(self):
+    def test_update_mockup_no_fields(self, mock_agent_tokens):
         runner = CliRunner()
         result = runner.invoke(
             main,
@@ -163,7 +163,7 @@ class TestMockupsUpdate:
 
 
 class TestMockupsDelete:
-    def test_delete_mockup(self, httpx_mock):
+    def test_delete_mockup(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="DELETE",
             url=f"{_MOCKUP_URL}/mockup-uuid-1",
@@ -178,7 +178,7 @@ class TestMockupsDelete:
         assert result.exit_code == 0
         assert "Mockup mockup-uuid-1 deleted" in result.output
 
-    def test_delete_mockup_abort(self):
+    def test_delete_mockup_abort(self, mock_agent_tokens):
         runner = CliRunner()
         result = runner.invoke(
             main,
