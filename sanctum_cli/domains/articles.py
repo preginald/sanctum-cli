@@ -4,11 +4,22 @@ import builtins
 from pathlib import Path
 
 import click
+import httpx
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post, put
 from sanctum_client.client import patch as api_patch
+
+
+def _handle_get(path: str, **kwargs: object) -> dict | list | None:
+    """Call get() and return None on 404 for clean CLI errors."""
+    try:
+        return get(path, **kwargs)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return None
+        raise
 
 
 @click.group()
@@ -25,9 +36,11 @@ def show(ctx: click.Context, slug_or_id: str, content: bool) -> None:
     """Show an article by slug (DOC-009) or UUID."""
     check_command_identity("articles", "show", ctx.obj.get("resolved_agent"))
 
-    check_command_identity("articles", "show", ctx.obj.get("resolved_agent"))
     params = {"expand": "content"} if content else None
-    result = get(f"/articles/{slug_or_id}", params=params)
+    result = _handle_get(f"/articles/{slug_or_id}", params=params)
+    if result is None:
+        print_error(f"Article not found: {slug_or_id}")
+        raise SystemExit(1)
     if ctx.obj.get("output_json"):
         print_json(result)
         return
