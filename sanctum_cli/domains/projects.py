@@ -1,12 +1,35 @@
 """Project domain commands."""
 
 import builtins
+import re
 
 import click
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
 from sanctum_client.client import get, post, put
+
+
+def _resolve_project_id(project: str) -> str:
+    """Resolve a project name or UUID to a full UUID."""
+    if re.match(r"^[0-9a-fA-F\-]{32,36}$", project):
+        return project
+
+    seen = 0
+    page = 1
+    page_size = 100
+    while True:
+        result = get("/projects", params={"limit": str(page_size), "page": str(page)})
+        projects_list = result if isinstance(result, builtins.list) else result.get("projects", [])
+        for item in projects_list:
+            seen += 1
+            if item.get("name", "").lower() == project.lower():
+                return item["id"]
+        if len(projects_list) < page_size:
+            break
+        page += 1
+
+    raise click.ClickException(f"Project not found: {project}")
 
 
 @click.group()
@@ -51,7 +74,7 @@ def show(ctx: click.Context, project_id: str, expand: str | None) -> None:
     """Show project details."""
     check_command_identity("projects", "show", ctx.obj.get("resolved_agent"))
 
-    check_command_identity("projects", "show", ctx.obj.get("resolved_agent"))
+    project_id = _resolve_project_id(project_id)
     params: dict = {}
     if expand:
         params["expand"] = expand
@@ -77,7 +100,7 @@ def overview(ctx: click.Context, project_id: str) -> None:
     """Get project overview with tickets grouped by milestone."""
     check_command_identity("projects", "overview", ctx.obj.get("resolved_agent"))
 
-    check_command_identity("projects", "overview", ctx.obj.get("resolved_agent"))
+    project_id = _resolve_project_id(project_id)
     result = get(f"/projects/{project_id}", params={"expand": "overview"})
     if ctx.obj.get("output_json"):
         print_json(result)
@@ -181,10 +204,28 @@ def update(
         print_error("Nothing to update. Provide at least one field.")
         return
 
+    project_id = _resolve_project_id(project_id)
     result = put(f"/projects/{project_id}", json=payload)
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
         print_success(f"Project {project_id} updated")
+    else:
+        print_error(str(result))
+
+
+@projects.command()
+@click.argument("project_id")
+@click.pass_context
+def complete(ctx: click.Context, project_id: str) -> None:
+    """Mark a project as completed by name or UUID."""
+    check_command_identity("projects", "complete", ctx.obj.get("resolved_agent"))
+
+    project_id = _resolve_project_id(project_id)
+    result = put(f"/projects/{project_id}", json={"status": "completed"})
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Project {project_id} completed")
     else:
         print_error(str(result))

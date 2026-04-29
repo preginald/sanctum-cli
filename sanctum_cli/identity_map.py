@@ -33,6 +33,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "projects.overview": None,
     "projects.create": None,
     "projects.update": None,
+    "projects.complete": None,
     # templates
     "templates.list": None,
     "templates.show": None,

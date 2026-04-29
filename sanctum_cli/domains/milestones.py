@@ -1,30 +1,13 @@
 """Milestone domain commands."""
 
 import builtins
-import re
 
 import click
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_cli.domains.projects import _resolve_project_id
 from sanctum_client.client import get, put
-
-
-def _resolve_project_id(project_id: str) -> str:
-    """Resolve a project name or UUID prefix to a full UUID."""
-    # Already looks like a UUID (hex with dashes)
-    if re.match(r"^[0-9a-fA-F\-]{32,36}$", project_id):
-        return project_id
-    # Try name lookup
-    projects = get("/projects")
-    projects_list = (
-        projects if isinstance(projects, builtins.list)
-        else projects.get("projects", [])
-    )
-    for p in projects_list:
-        if p.get("name", "").lower() == project_id.lower():
-            return p["id"]
-    raise click.ClickException(f"Project not found: {project_id}")
 
 
 @click.group()
@@ -85,15 +68,16 @@ def show(ctx: click.Context, milestone_id: str) -> None:
 
 @milestones.command()
 @click.argument("milestone_id")
+@click.option("--status", "-s", default="completed", help="Target status (e.g. active, completed)")
 @click.pass_context
-def complete(ctx: click.Context, milestone_id: str) -> None:
-    """Mark a milestone as completed."""
+def complete(ctx: click.Context, milestone_id: str, status: str) -> None:
+    """Mark a milestone as completed (or transition to another status)."""
     check_command_identity("milestones", "complete", ctx.obj.get("resolved_agent"))
 
-    result = put(f"/milestones/{milestone_id}", json={"status": "completed"})
+    result = put(f"/milestones/{milestone_id}", json={"status": status})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
-        print_success(f"Milestone {milestone_id} completed")
+        print_success(f"Milestone {milestone_id} → {status}")
     else:
         print_error(str(result))
