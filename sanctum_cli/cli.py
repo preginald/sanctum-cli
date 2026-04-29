@@ -95,6 +95,7 @@ def login(env: str | None, agent: str | None, user: str | None) -> None:
 from sanctum_cli.domains.artefacts_ import artefacts
 from sanctum_cli.domains.articles import articles
 from sanctum_cli.domains.capture_execute import capture_execute
+from sanctum_cli.domains.forms import forms
 from sanctum_cli.domains.invoices import invoices
 from sanctum_cli.domains.milestones import milestones
 from sanctum_cli.domains.mockups import mockups
@@ -123,6 +124,7 @@ main.add_command(time_entries)
 main.add_command(artefacts)
 main.add_command(notify)
 main.add_command(mockups)
+main.add_command(forms)
 
 
 if __name__ == "__main__":

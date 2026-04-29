@@ -26,6 +26,8 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # invoices
     "invoices.show": "oracle",
     "invoices.list": "oracle",
+    "invoices.pay": "oracle",
+    "invoices.send_receipt": "oracle",
     # search
     "search.search": None,
     # projects
@@ -38,6 +40,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # templates
     "templates.list": None,
     "templates.show": None,
+    "templates.apply": None,
     # products
     "products.list": None,
     # rate_cards
@@ -58,9 +61,17 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "notify.list": "scribe",
     # mockups
     "mockups.list": None,
+    "mockups.show": None,
     "mockups.create": "surgeon",
     "mockups.update": "surgeon",
     "mockups.delete": "surgeon",
+    "mockups.lint": "surgeon",
+    "mockups.publish": "surgeon",
+    # forms
+    "forms.templates.create": None,
+    "forms.templates.deploy": None,
+    "forms.submissions.delete": None,
+    "forms.submissions.update": None,
     # capture_execute
     "capture_execute.capture": None,
     "capture_execute.execute": None,

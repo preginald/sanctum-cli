@@ -17,6 +17,7 @@ load_dotenv()
 log = logging.getLogger(__name__)
 
 API_BASE = os.getenv("SANCTUM_API_BASE", "https://core.digitalsanctum.com.au/api")
+FORMS_API_BASE = os.getenv("SANCTUM_FORMS_API_BASE", "https://forms.digitalsanctum.com.au/api/v1")
 API_TOKEN = os.getenv("SANCTUM_API_TOKEN", "")
 
 _TIMEOUT = httpx.Timeout(30.0, connect=10.0)
@@ -33,6 +34,19 @@ def set_api_base(base_url: str) -> None:
     if _client is not None:
         _client.close()
         _client = None
+
+
+def set_forms_api_base(base_url: str) -> None:
+    global FORMS_API_BASE
+    FORMS_API_BASE = base_url.rstrip("/")
+
+
+_FORMS_ACCOUNT_ID: str = ""
+
+
+def set_forms_account_id(account_id: str) -> None:
+    global _FORMS_ACCOUNT_ID
+    _FORMS_ACCOUNT_ID = account_id
 
 
 def set_api_token(token: str) -> None:
@@ -141,6 +155,79 @@ def patch(path: str, json: dict | None = None) -> Any:
 
 def delete(path: str) -> Any:
     r = _request("DELETE", path)
+    _check_upstream(r, "DELETE", path)
+    if r.status_code == 204 or not r.content:
+        return {"status": "deleted"}
+    return r.json()
+
+
+def _forms_request(method: str, path: str, **kwargs: Any) -> httpx.Response:
+    client = httpx.Client(
+        base_url=FORMS_API_BASE,
+        timeout=_TIMEOUT,
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+    )
+    kwargs.setdefault("headers", {})
+    kwargs["headers"]["Authorization"] = f"Bearer {_current_token}"
+    kwargs["headers"]["Content-Type"] = "application/json"
+    if _FORMS_ACCOUNT_ID:
+        kwargs["headers"]["X-Account-Id"] = _FORMS_ACCOUNT_ID
+
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            r = client.request(method, path, **kwargs)
+            if r.status_code not in _RETRY_STATUSES:
+                return r
+            last_exc = httpx.HTTPStatusError(f"{r.status_code}", request=r.request, response=r)
+        except (httpx.ConnectError, httpx.ReadError, httpx.WriteError, httpx.PoolTimeout) as exc:
+            last_exc = exc
+        if attempt < _MAX_RETRIES - 1:
+            wait = 0.5 * (2**attempt)
+            log.warning(
+                "Forms retry %d/%d for %s %s (%.1fs backoff)",
+                attempt + 1,
+                _MAX_RETRIES,
+                method,
+                path,
+                wait,
+            )
+            time.sleep(wait)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError(f"Forms request failed: {method} {path}")
+
+
+def forms_get(path: str, params: dict | None = None) -> Any:
+    r = _forms_request("GET", path, params=params)
+    _check_upstream(r, "GET", path)
+    return r.json()
+
+
+def forms_post(path: str, json: dict | None = None) -> Any:
+    r = _forms_request("POST", path, json=json)
+    if r.status_code == 422:
+        return {"error": True, "status_code": 422, **r.json()}
+    _check_upstream(r, "POST", path)
+    return r.json()
+
+
+def forms_put(path: str, json: dict | None = None) -> Any:
+    r = _forms_request("PUT", path, json=json)
+    if r.status_code == 422:
+        return {"error": True, "status_code": 422, **r.json()}
+    _check_upstream(r, "PUT", path)
+    return r.json()
+
+
+def forms_patch(path: str, json: dict | None = None) -> Any:
+    r = _forms_request("PATCH", path, json=json)
+    _check_upstream(r, "PATCH", path)
+    return r.json()
+
+
+def forms_delete(path: str) -> Any:
+    r = _forms_request("DELETE", path)
     _check_upstream(r, "DELETE", path)
     if r.status_code == 204 or not r.content:
         return {"status": "deleted"}
