@@ -215,15 +215,28 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
     result = post("/comments", json={"ticket_id": ticket_id, "body": body, "is_resolution": True})
     comment_id = result.get("id") if isinstance(result, dict) else None
 
-    if comment_id:
-        put(
-            f"/tickets/{ticket_id}",
-            json={"status": "resolved", "resolution_comment_id": comment_id},
-        )
+    if not comment_id:
+        if ctx.obj.get("output_json"):
+            print_json(result)
+        else:
+            print_error(str(result))
+        return
+
+    update_result = put(
+        f"/tickets/{ticket_id}",
+        json={"status": "resolved", "resolution_comment_id": comment_id},
+    )
+
+    if isinstance(update_result, dict) and update_result.get("error"):
+        if ctx.obj.get("output_json"):
+            print_json({"comment": result, "status_update": update_result})
+        else:
+            print_error(
+                f"Comment created but status update failed: {update_result}"
+            )
+        return
 
     if ctx.obj.get("output_json"):
         print_json(result)
-    elif comment_id:
-        print_success(f"Ticket #{ticket_id} resolved")
     else:
-        print_error(str(result))
+        print_success(f"Ticket #{ticket_id} resolved")

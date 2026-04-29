@@ -105,6 +105,7 @@ def login(env: str | None, agent: str | None, user: str | None) -> None:
 # ruff: noqa: E402 — domain imports must be after main() definition
 from sanctum_cli.domains.artefacts_ import artefacts
 from sanctum_cli.domains.articles import articles
+from sanctum_cli.domains.capture_execute import capture_execute
 from sanctum_cli.domains.invoices import invoices
 from sanctum_cli.domains.milestones import milestones
 from sanctum_cli.domains.mockups import mockups
@@ -120,6 +121,7 @@ from sanctum_cli.domains.workbench import workbench
 
 main.add_command(tickets)
 main.add_command(articles)
+main.add_command(capture_execute)
 main.add_command(milestones)
 main.add_command(invoices)
 main.add_command(search)

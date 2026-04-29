@@ -5,8 +5,8 @@ import builtins
 import click
 
 from sanctum_cli.auth import check_command_identity
-from sanctum_cli.display import print_json, print_key_value, print_table
-from sanctum_client.client import get
+from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_client.client import get, put
 
 
 @click.group()
@@ -64,3 +64,19 @@ def show(ctx: click.Context, milestone_id: str) -> None:
         "Sequence": result.get("sequence"),
         "Ticket Count": result.get("ticket_count"),
     }, title=f"Milestone: {result.get('name', '')}")
+
+
+@milestones.command()
+@click.argument("milestone_id")
+@click.pass_context
+def complete(ctx: click.Context, milestone_id: str) -> None:
+    """Mark a milestone as completed."""
+    check_command_identity("milestones", "complete", ctx.obj.get("resolved_agent"))
+
+    result = put(f"/milestones/{milestone_id}", json={"status": "completed"})
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Milestone {milestone_id} completed")
+    else:
+        print_error(str(result))

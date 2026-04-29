@@ -49,6 +49,11 @@ def load_agent_tokens(env_dir: str | None = None) -> dict[str, str]:
 
     AGENT_TOKEN_MAP.clear()
 
+    sanctum_env = Path.home() / ".sanctum" / ".env"
+    if sanctum_env.exists():
+        log.debug("Loading %s", sanctum_env)
+        load_dotenv(sanctum_env)
+
     for name, env_var in TOKEN_ENV_MAP.items():
         val = os.getenv(env_var, "")
         if val:

@@ -53,12 +53,16 @@ def list(ctx: click.Context, ticket_id: int | None, limit: int) -> None:
 @click.option("--name", "-n", required=True, help="Mockup name")
 @click.option("--ticket-id", "-t", type=int, default=None, help="Link to ticket")
 @click.option("--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Mockup file path")
+@click.option("--type", "artefact_type", default="file",
+              type=click.Choice(["file", "url", "code_path", "document", "credential_ref"]),
+              help="Artefact type")
 @click.pass_context
-def create(ctx: click.Context, name: str, ticket_id: int | None, file: str | None) -> None:
+def create(ctx: click.Context, name: str, ticket_id: int | None, file: str | None,
+           artefact_type: str) -> None:
     """Create a new mockup artefact."""
     check_command_identity("mockups", "create", ctx.obj.get("resolved_agent"))
 
-    payload: dict = {"name": name, "category": "mockup"}
+    payload: dict = {"name": name, "category": "mockup", "artefact_type": artefact_type}
     if ticket_id:
         payload["ticket_id"] = ticket_id
     if file:
@@ -111,7 +115,7 @@ def delete(ctx: click.Context, mockup_id: str) -> None:
     result = api_delete(f"/artefacts/{mockup_id}")
     if ctx.obj.get("output_json"):
         print_json(result)
-    elif isinstance(result, dict) and result.get("status") == "deleted":
+    elif isinstance(result, dict) and result.get("status") in ("deleted", "archived"):
         print_success(f"Mockup {mockup_id} deleted")
     else:
         print_error(str(result))
