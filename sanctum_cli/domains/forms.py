@@ -192,6 +192,25 @@ def update(
         print_error(str(result))
 
 
+@submissions.command()
+@click.argument("submission_id")
+@click.pass_context
+def share_token(ctx: click.Context, submission_id: str) -> None:
+    """Generate a share link for a submission (admin only).
+
+    The share link lets anyone with the URL view the submission
+    without authentication. Tokens expire on server restart.
+    """
+    check_command_identity("forms", "submissions.share-token", ctx.obj.get("resolved_agent"))
+    result = forms_post(f"/submissions/{submission_id}/share-token")
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "share_url" in result:
+        print_success(f"Share link: {result['share_url']}")
+    else:
+        print_error(str(result))
+
+
 @templates.command()
 @click.argument("template_id")
 @click.option("--name", "-n", required=True, help="Instance name")

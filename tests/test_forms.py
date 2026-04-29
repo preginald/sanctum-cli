@@ -459,3 +459,26 @@ class TestFormsSubmissionsDelete:
             input="n\n",
         )
         assert result.exit_code != 0
+
+
+class TestFormsSubmissionsShareToken:
+    def test_share_token(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="POST",
+            url="https://forms.digitalsanctum.com.au/api/v1/submissions/sub-uuid/share-token",
+            json={"token": "abc123", "share_url": "https://forms.digitalsanctum.com.au/api/v1/public/s/abc123"},
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent", "surgeon",
+                "forms",
+                "--account-id", _ACCOUNT_ID,
+                "submissions", "share-token",
+                "sub-uuid",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Share link:" in result.output
+        assert "abc123" in result.output
