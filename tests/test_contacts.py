@@ -62,3 +62,42 @@ class TestContactsInvite:
 
         assert result.exit_code == 1
         assert "Contact has no email address" in result.output
+
+
+class TestContactsSetPassword:
+    def test_set_contact_password(self, monkeypatch, mock_agent_tokens):
+        requests = []
+
+        def fake_post(path, json=None):
+            requests.append((path, json))
+            return {"status": "password_set", "email": "louise@example.com"}
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.post", fake_post)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "set-password", "contact-uuid"],
+            input="client-safe-pass\nclient-safe-pass\n",
+        )
+
+        assert result.exit_code == 0
+        assert requests == [("/contacts/contact-uuid/password", {"password": "client-safe-pass"})]
+        assert "Portal password set for louise@example.com" in result.output
+        assert "client-safe-pass" not in result.output
+
+    def test_set_contact_password_validation_error(self, monkeypatch, mock_agent_tokens):
+        def fake_post(path, json=None):
+            return {"error": True, "status_code": 422, "detail": "Password is too short"}
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.post", fake_post)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "set-password", "contact-uuid"],
+            input="short-pass\nshort-pass\n",
+        )
+
+        assert result.exit_code == 1
+        assert "Password is too short" in result.output

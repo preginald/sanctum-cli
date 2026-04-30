@@ -12,8 +12,7 @@ def _error_message(result: dict) -> str:
     detail = result.get("detail") or result.get("message") or result.get("error")
     if isinstance(detail, list):
         return "; ".join(
-            str(item.get("msg", item)) if isinstance(item, dict) else str(item)
-            for item in detail
+            str(item.get("msg", item)) if isinstance(item, dict) else str(item) for item in detail
         )
     return str(detail or result)
 
@@ -84,6 +83,43 @@ def invite(ctx: click.Context, contact_id: str) -> None:
 
     if isinstance(result, dict) and result.get("email"):
         print_success(f"Portal invite sent to {result['email']}")
+        print_key_value(
+            {
+                "Status": result.get("status"),
+                "Email": result.get("email"),
+            }
+        )
+    else:
+        print_error(str(result))
+        raise SystemExit(1)
+
+
+@contacts.command("set-password")
+@click.argument("contact_id")
+@click.pass_context
+def set_password(ctx: click.Context, contact_id: str) -> None:
+    """Set a portal password for a contact."""
+    check_command_identity("contacts", "set-password", ctx.obj.get("resolved_agent"))
+
+    password = click.prompt(
+        "New portal password",
+        hide_input=True,
+        confirmation_prompt=True,
+    )
+    result = post(f"/contacts/{contact_id}/password", json={"password": password})
+
+    if ctx.obj.get("output_json"):
+        print_json(result)
+        if isinstance(result, dict) and result.get("error"):
+            raise SystemExit(1)
+        return
+
+    if isinstance(result, dict) and result.get("error"):
+        print_error(_error_message(result))
+        raise SystemExit(1)
+
+    if isinstance(result, dict) and result.get("email"):
+        print_success(f"Portal password set for {result['email']}")
         print_key_value(
             {
                 "Status": result.get("status"),
