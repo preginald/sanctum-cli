@@ -79,6 +79,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # contacts
     "contacts.enable-portal": "surgeon",
     "contacts.invite": "surgeon",
+    "contacts.set-password": "surgeon",
 }
 
 
