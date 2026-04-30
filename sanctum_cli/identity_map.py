@@ -76,6 +76,9 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # capture_execute
     "capture_execute.capture": None,
     "capture_execute.execute": None,
+    # contacts
+    "contacts.enable-portal": "surgeon",
+    "contacts.invite": "surgeon",
 }
 
 
