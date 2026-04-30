@@ -12,6 +12,18 @@ from sanctum_client.client import get, post, put
 from sanctum_client.client import patch as api_patch
 
 
+def _normalize_section_heading(section: str) -> str:
+    """Normalize section name to markdown heading form.
+
+    If section doesn't start with a markdown heading prefix (#, ##, etc.),
+    prepend '# ' to make it a top-level heading.
+    """
+    stripped = section.strip()
+    if not stripped.startswith("#"):
+        return f"# {stripped}"
+    return stripped
+
+
 def _handle_get(path: str, **kwargs: object) -> dict | list | None:
     """Call get() and return None on 404 for clean CLI errors."""
     try:
@@ -59,6 +71,9 @@ def show(ctx: click.Context, slug_or_id: str, content: bool) -> None:
         },
         title=f"Article: {result.get('identifier', slug_or_id)}",
     )
+
+    if content and result.get("content"):
+        click.echo(f"\n[bold]Content:[/bold]\n{result['content']}")
 
 
 @articles.command()
@@ -147,7 +162,8 @@ def update(
             print_error("--section requires --file")
             return
         content = Path(file).read_text()
-        payload = {"heading": section, "content": content}
+        normalized_section = _normalize_section_heading(section)
+        payload = {"heading": normalized_section, "content": content}
         result = api_patch(f"/articles/{slug_or_id}/sections", json=payload)
         if ctx.obj.get("output_json"):
             print_json(result)
