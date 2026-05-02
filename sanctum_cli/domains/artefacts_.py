@@ -3,9 +3,11 @@
 import builtins
 
 import click
+import httpx
 
 from sanctum_cli.auth import check_command_identity
-from sanctum_cli.display import print_json, print_key_value, print_success, print_table
+from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_client.client import delete as api_delete
 from sanctum_client.client import get, post, put
 
 
@@ -17,11 +19,13 @@ def artefacts() -> None:
 
 @artefacts.command()
 @click.argument("artefact_id")
+@click.option("--content", is_flag=True, help="Include artefact content when available")
 @click.pass_context
-def show(ctx: click.Context, artefact_id: str) -> None:
+def show(ctx: click.Context, artefact_id: str, content: bool) -> None:
     """Show artefact details."""
     check_command_identity("artefacts", "show", ctx.obj.get("resolved_agent"))
-    result = get(f"/artefacts/{artefact_id}")
+    params = {"expand": "content"} if content else None
+    result = get(f"/artefacts/{artefact_id}", params=params)
     if ctx.obj.get("output_json"):
         print_json(result)
         return
@@ -38,6 +42,9 @@ def show(ctx: click.Context, artefact_id: str) -> None:
         },
         title=f"Artefact: {result.get('name', '')}",
     )
+    if content and result.get("content") is not None:
+        click.echo("\n--- Content ---")
+        click.echo(result["content"])
 
 
 @artefacts.command()
@@ -123,16 +130,185 @@ def create(
                 print_json(result)
             return
         if error:
-            from sanctum_cli.display import print_error
-
             print_error(f"Artefact created but content update failed: {error}")
             return
         print_success(f"Artefact created: {artefact_id}")
     elif isinstance(result, dict) and result.get("error"):
-        from sanctum_cli.display import print_error
-
         print_error(str(result))
     else:
-        from sanctum_cli.display import print_error
-
         print_error(str(result))
+
+
+ENTITY_TYPES = ["ticket", "account", "article", "project", "milestone"]
+
+
+@artefacts.command()
+@click.argument("artefact_id")
+@click.option("--project-id", "-p", default=None, help="Core project UUID to link to")
+@click.option("--entity-type", "-t", default=None, type=click.Choice(ENTITY_TYPES))
+@click.option("--entity-id", "-e", default=None, help="Target entity ID")
+@click.pass_context
+def link(
+    ctx: click.Context,
+    artefact_id: str,
+    project_id: str | None,
+    entity_type: str | None,
+    entity_id: str | None,
+) -> None:
+    """Link an artefact to a project, ticket, account, article, or milestone."""
+    check_command_identity("artefacts", "link", ctx.obj.get("resolved_agent"))
+
+    if project_id and (entity_type or entity_id):
+        print_error("Provide either --project-id or --entity-type/--entity-id, not both.")
+        return
+
+    if project_id:
+        resolved_type = "project"
+        resolved_id = project_id
+    elif entity_type and entity_id:
+        resolved_type = entity_type
+        resolved_id = entity_id
+    else:
+        print_error("Provide --project-id or both --entity-type and --entity-id.")
+        return
+
+    result = post(
+        f"/artefacts/{artefact_id}/link",
+        json={"entity_type": resolved_type, "entity_id": resolved_id},
+    )
+    if ctx.obj.get("output_json"):
+        print_json(result)
+        return
+    if isinstance(result, dict) and result.get("error"):
+        print_error(str(result))
+    else:
+        print_success(f"Artefact {artefact_id} linked to {resolved_type} {resolved_id}")
+
+
+@artefacts.command()
+@click.argument("artefact_id")
+@click.option("--name", "-n", default=None, help="New artefact name")
+@click.option("--description", "-d", default=None, help="New description")
+@click.option("--content", default=None, help="Artefact body content")
+@click.option("--mime-type", "mime_type", default=None, help="Content MIME type (e.g. text/html)")
+@click.option("--sensitivity", default=None, help="Sensitivity level")
+@click.option("--category", "-c", default=None, help="Category")
+@click.option("--status", default=None, help="Status (if backend allows direct patch)")
+@click.pass_context
+def update(
+    ctx: click.Context,
+    artefact_id: str,
+    name: str | None,
+    description: str | None,
+    content: str | None,
+    mime_type: str | None,
+    sensitivity: str | None,
+    category: str | None,
+    status: str | None,
+) -> None:
+    """Update an artefact's mutable fields."""
+    check_command_identity("artefacts", "update", ctx.obj.get("resolved_agent"))
+
+    payload: dict = {}
+    if name is not None:
+        payload["name"] = name
+    if description is not None:
+        payload["description"] = description
+    if content is not None:
+        payload["content"] = content
+    if mime_type is not None:
+        payload["mime_type"] = mime_type
+    if sensitivity is not None:
+        payload["sensitivity"] = sensitivity
+    if category is not None:
+        payload["category"] = category
+    if status is not None:
+        payload["status"] = status
+
+    if not payload:
+        print_error(
+            "Nothing to update. Provide --name, --description, --content, "
+            "--mime-type, --sensitivity, --category, or --status."
+        )
+        return
+
+    result = put(f"/artefacts/{artefact_id}", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Artefact {artefact_id} updated")
+    else:
+        print_error(str(result))
+
+
+@artefacts.command()
+@click.argument("artefact_id")
+@click.option("--to", required=True, help="Target status transition")
+@click.pass_context
+def transition(ctx: click.Context, artefact_id: str, to: str) -> None:
+    """Transition an artefact to a new status."""
+    check_command_identity("artefacts", "transition", ctx.obj.get("resolved_agent"))
+
+    try:
+        artefact = get(f"/artefacts/{artefact_id}")
+    except httpx.HTTPStatusError as exc:
+        print_error(f"Failed to fetch artefact: {exc}")
+        return
+    if isinstance(artefact, dict) and artefact.get("error"):
+        print_error(f"Failed to fetch artefact: {artefact}")
+        return
+
+    available = artefact.get("available_transitions", [])
+    if to not in available:
+        print_error(
+            f"Cannot transition artefact {artefact_id} to '{to}'. Valid transitions: {available}"
+        )
+        return
+
+    result = put(f"/artefacts/{artefact_id}", json={"status": to})
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Artefact {artefact_id} transitioned to {to}")
+    else:
+        print_error(str(result))
+
+
+@artefacts.command()
+@click.argument("artefact_id")
+@click.option("--project-id", "-p", default=None, help="Core project UUID to unlink from")
+@click.option("--entity-type", "-t", default=None, type=click.Choice(ENTITY_TYPES))
+@click.option("--entity-id", "-e", default=None, help="Target entity ID")
+@click.pass_context
+def unlink(
+    ctx: click.Context,
+    artefact_id: str,
+    project_id: str | None,
+    entity_type: str | None,
+    entity_id: str | None,
+) -> None:
+    """Unlink an artefact from a project, ticket, account, article, or milestone."""
+    check_command_identity("artefacts", "unlink", ctx.obj.get("resolved_agent"))
+
+    if project_id and (entity_type or entity_id):
+        print_error("Provide either --project-id or --entity-type/--entity-id, not both.")
+        return
+
+    if project_id:
+        resolved_type = "project"
+        resolved_id = project_id
+    elif entity_type and entity_id:
+        resolved_type = entity_type
+        resolved_id = entity_id
+    else:
+        print_error("Provide --project-id or both --entity-type and --entity-id.")
+        return
+
+    result = api_delete(f"/artefacts/{artefact_id}/link/{resolved_type}/{resolved_id}")
+    if ctx.obj.get("output_json"):
+        print_json(result)
+        return
+    if isinstance(result, dict) and result.get("error"):
+        print_error(str(result))
+    else:
+        print_success(f"Artefact {artefact_id} unlinked from {resolved_type} {resolved_id}")

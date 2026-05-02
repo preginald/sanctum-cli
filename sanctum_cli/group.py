@@ -2,6 +2,15 @@
 
 import click
 
+_GLOBAL_FLAGS: dict[str, str] = {
+    "--json": "sanctum --json --agent surgeon <command>",
+    "--debug": "sanctum --debug --agent surgeon <command>",
+    "--yes": "sanctum --yes --agent surgeon <command>",
+    "--agent": "sanctum --agent surgeon <command>",
+    "--user": "sanctum --user email@example.com <command>",
+    "--env": "sanctum --env prod --agent surgeon <command>",
+}
+
 
 class HelpfulGroup(click.Group):
     """Click group with alias support and 'did you mean' suggestions.
@@ -46,4 +55,20 @@ class HelpfulGroup(click.Group):
                     f"Did you mean:\n"
                     f"  {self.suggestions[cmd_name]}"
                 ) from None
+            raise
+
+    def invoke(self, ctx: click.Context) -> object:
+        try:
+            return super().invoke(ctx)
+        except click.NoSuchOption as e:
+            hint = _GLOBAL_FLAGS.get(e.option_name)
+            if hint:
+                raise click.UsageError(
+                    f"No such option: {e.option_name}\n"
+                    f"\n"
+                    f"Hint: {e.option_name} is a global flag — place it before the"
+                    f" command name.\n"
+                    f"\n"
+                    f"  Correct:  {hint}"
+                ) from e
             raise

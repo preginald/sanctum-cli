@@ -53,8 +53,17 @@ class TestArticlesUpdateSection:
             json={"id": "ART-001", "heading": "# Intro"},
         )
         runner = CliRunner()
-        cmd = ["--agent", "scribe", "articles", "update", "ART-001",
-               "--section", "Intro", "--file", article_file]
+        cmd = [
+            "--agent",
+            "scribe",
+            "articles",
+            "update",
+            "ART-001",
+            "--section",
+            "Intro",
+            "--file",
+            article_file,
+        ]
         result = runner.invoke(main, cmd)
         assert result.exit_code == 0
         # Check the request body was normalized
@@ -71,10 +80,61 @@ class TestArticlesUpdateSection:
             json={"id": "ART-001", "heading": "## Setup"},
         )
         runner = CliRunner()
-        cmd = ["--agent", "scribe", "articles", "update", "ART-001",
-               "--section", "## Setup", "--file", article_file]
+        cmd = [
+            "--agent",
+            "scribe",
+            "articles",
+            "update",
+            "ART-001",
+            "--section",
+            "## Setup",
+            "--file",
+            article_file,
+        ]
         result = runner.invoke(main, cmd)
         assert result.exit_code == 0
         request = httpx_mock.get_request()
         body = json.loads(request.content)
         assert body["heading"] == "## Setup"
+
+
+class TestArticlesShow:
+    """Tests for articles show command."""
+
+    def test_show_without_content_prints_hint(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="GET",
+            url=f"{_ARTICLES_URL}/SOP-109",
+            json={
+                "identifier": "SOP-109",
+                "title": "Standard Deployment Pattern",
+                "slug": "standard-deploy-pattern-digitalocean-vps",
+                "category": "Standard Operating Procedure",
+            },
+        )
+        runner = CliRunner()
+        result = runner.invoke(main, ["--agent", "scribe", "articles", "show", "SOP-109"])
+
+        assert result.exit_code == 0
+        assert "Content hidden" in result.output
+        assert "sanctum --agent scribe articles show SOP-109" in result.output
+        assert "--content" in result.output
+
+    def test_show_with_content_requests_expanded_content(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="GET",
+            url=f"{_ARTICLES_URL}/SOP-109?expand=content",
+            json={
+                "identifier": "SOP-109",
+                "title": "Standard Deployment Pattern",
+                "content": "# Full content",
+            },
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["--agent", "scribe", "articles", "show", "SOP-109", "--content"]
+        )
+
+        assert result.exit_code == 0
+        assert "# Full content" in result.output
+        assert "Content hidden" not in result.output

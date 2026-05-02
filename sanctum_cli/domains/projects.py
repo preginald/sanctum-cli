@@ -12,14 +12,18 @@ from sanctum_client.client import get, post, put
 
 def _resolve_project_id(project: str) -> str:
     """Resolve a project name or UUID to a full UUID."""
-    if re.match(r"^[0-9a-fA-F\-]{32,36}$", project):
+    if re.match(r"^[0-9a-fA-F\-]{4,36}$", project):
         return project
 
     seen = 0
     page = 1
     page_size = 100
-    while True:
-        result = get("/projects", params={"limit": str(page_size), "page": str(page)})
+    max_pages = 50
+    while page <= max_pages:
+        result = get(
+            "/projects",
+            params={"limit": str(page_size), "offset": str((page - 1) * page_size)},
+        )
         projects_list = result if isinstance(result, builtins.list) else result.get("projects", [])
         for item in projects_list:
             seen += 1

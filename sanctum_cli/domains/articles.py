@@ -7,7 +7,14 @@ import click
 import httpx
 
 from sanctum_cli.auth import check_command_identity
-from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
+from sanctum_cli.display import (
+    print_error,
+    print_json,
+    print_key_value,
+    print_success,
+    print_table,
+    print_warning,
+)
 from sanctum_client.client import get, post, put
 from sanctum_client.client import patch as api_patch
 
@@ -74,6 +81,14 @@ def show(ctx: click.Context, slug_or_id: str, content: bool) -> None:
 
     if content and result.get("content"):
         click.echo(f"\n[bold]Content:[/bold]\n{result['content']}")
+    elif not content:
+        identity = ""
+        if ctx.obj.get("agent"):
+            identity = f"--agent {ctx.obj['agent']} "
+        elif ctx.obj.get("user"):
+            identity = f"--user {ctx.obj['user']} "
+        command = f"sanctum {identity}articles show {slug_or_id} --content"
+        print_warning(f"Content hidden. Re-run with:\n  {command}")
 
 
 @articles.command()

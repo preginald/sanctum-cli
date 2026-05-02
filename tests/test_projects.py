@@ -29,7 +29,7 @@ def test_complete_project_by_name_resolves_uuid(monkeypatch):
 
     assert result.exit_code == 0
     assert calls == [
-        ("GET", "/projects", {"limit": "100", "page": "1"}),
+        ("GET", "/projects", {"limit": "100", "offset": "0"}),
         ("PUT", f"/projects/{project_id}", {"status": "completed"}),
     ]
 
@@ -40,8 +40,8 @@ def test_complete_project_by_name_paginates(monkeypatch):
 
     def fake_get(path, params=None):
         calls.append(("GET", path, params))
-        page = int(params.get("page", "1"))
-        if page == 1:
+        offset = int(params.get("offset", "0"))
+        if offset == 0:
             return {"projects": [{"id": "old-id", "name": "Some Other Project"}] * 100}
         return {"projects": [{"id": project_id, "name": "Form Template & Instance Restructure"}]}
 
@@ -60,8 +60,8 @@ def test_complete_project_by_name_paginates(monkeypatch):
 
     assert result.exit_code == 0
     assert calls == [
-        ("GET", "/projects", {"limit": "100", "page": "1"}),
-        ("GET", "/projects", {"limit": "100", "page": "2"}),
+        ("GET", "/projects", {"limit": "100", "offset": "0"}),
+        ("GET", "/projects", {"limit": "100", "offset": "100"}),
         ("PUT", f"/projects/{project_id}", {"status": "completed"}),
     ]
 

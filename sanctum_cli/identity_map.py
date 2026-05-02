@@ -41,6 +41,8 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "templates.list": None,
     "templates.show": None,
     "templates.apply": None,
+    "templates.create": "surgeon",
+    "templates.update": "surgeon",
     # products
     "products.list": None,
     # rate_cards
@@ -57,6 +59,10 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "artefacts.show": None,
     "artefacts.list": None,
     "artefacts.create": "surgeon",
+    "artefacts.update": "surgeon",
+    "artefacts.transition": "surgeon",
+    "artefacts.link": "surgeon",
+    "artefacts.unlink": "surgeon",
     # notify
     "notify.list": "scribe",
     # mockups
@@ -69,7 +75,12 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "mockups.publish": "surgeon",
     # forms
     "forms.templates.create": None,
+    "forms.templates.list": None,
+    "forms.templates.show": None,
+    "forms.templates.update": None,
+    "forms.templates.delete": None,
     "forms.templates.deploy": None,
+    "forms.submissions.show": None,
     "forms.submissions.delete": None,
     "forms.submissions.update": None,
     "forms.submissions.share-token": None,
@@ -80,6 +91,19 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "contacts.enable-portal": "surgeon",
     "contacts.invite": "surgeon",
     "contacts.set-password": "surgeon",
+    # flow
+    "flow.list": None,
+    "flow.show": None,
+    "flow.definition-create": "architect",
+    "flow.definition-update": "architect",
+    "flow.definition-publish": "architect",
+    "flow.lint": None,
+    "flow.instance-create": "architect",
+    "flow.context-update": "architect",
+    "flow.instance-action": "architect",
+    "flow.update-step": "architect",
+    "flow.simulate": "architect",
+    "flow.simulation-results": None,
 }
 
 
