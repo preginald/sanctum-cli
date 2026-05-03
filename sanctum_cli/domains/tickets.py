@@ -339,7 +339,20 @@ def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
     "--status",
     "-s",
     type=click.Choice(
-        ["recon", "proposal", "pending", "new", "triaging", "open", "resolved", "closed"]
+        [
+            "recon",
+            "proposal",
+            "pending",
+            "new",
+            "triaging",
+            "open",
+            "implementation",
+            "verification",
+            "review",
+            "documented",
+            "resolved",
+            "closed",
+        ]
     ),
     default=None,
     help="New status (triaging requires WIKI-034)",
