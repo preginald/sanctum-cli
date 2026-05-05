@@ -212,7 +212,7 @@ class TestContactsUpdate:
                 "first_name": "Jane",
                 "last_name": "Doe",
                 "email": "jane@example.com",
-                "primary_contact": True,
+                "is_primary_contact": True,
             }
 
         monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
@@ -234,7 +234,7 @@ class TestContactsUpdate:
         assert requests == [
             (
                 "/contacts/contact-uuid",
-                {"primary_contact": True},
+                {"is_primary_contact": True},
             )
         ]
         assert "Contact contact-uuid updated" in result.output
