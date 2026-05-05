@@ -129,3 +129,91 @@ def set_password(ctx: click.Context, contact_id: str) -> None:
     else:
         print_error(str(result))
         raise SystemExit(1)
+
+
+@contacts.command("update")
+@click.argument("contact_id")
+@click.option("--first-name", "-f", default=None, help="New first name")
+@click.option("--last-name", "-l", default=None, help="New last name")
+@click.option("--email", "-e", default=None, help="New email address")
+@click.option("--phone", "-p", default=None, help="New phone number")
+@click.option("--job-title", "-j", default=None, help="New job title")
+@click.option("--company-name", "-c", default=None, help="New company name")
+@click.option("--account-id", "-a", default=None, help="New account UUID")
+@click.pass_context
+def update_contact(
+    ctx: click.Context,
+    contact_id: str,
+    first_name: str | None,
+    last_name: str | None,
+    email: str | None,
+    phone: str | None,
+    job_title: str | None,
+    company_name: str | None,
+    account_id: str | None,
+) -> None:
+    """Update a contact's fields."""
+    check_command_identity("contacts", "update", ctx.obj.get("resolved_agent"))
+
+    payload: dict = {}
+    if first_name is not None:
+        payload["first_name"] = first_name
+    if last_name is not None:
+        payload["last_name"] = last_name
+    if email is not None:
+        payload["email"] = email
+    if phone is not None:
+        payload["phone"] = phone
+    if job_title is not None:
+        payload["job_title"] = job_title
+    if company_name is not None:
+        payload["company_name"] = company_name
+    if account_id is not None:
+        payload["account_id"] = account_id
+
+    if not payload:
+        print_error("Nothing to update. Provide at least one field.")
+        return
+
+    result = put(f"/contacts/{contact_id}", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Contact {contact_id} updated")
+        print_key_value(
+            {
+                "Name": f"{result.get('first_name', '')} {result.get('last_name', '')}".strip(),
+                "Email": result.get("email"),
+                "Phone": result.get("phone"),
+                "Job Title": result.get("job_title"),
+                "Company": result.get("company_name"),
+            }
+        )
+    else:
+        print_error(str(result))
+
+
+@contacts.command("provision-cms-sso")
+@click.argument("contact_id")
+@click.pass_context
+def provision_cms_sso(ctx: click.Context, contact_id: str) -> None:
+    """Provision CMS SSO access for a contact."""
+    check_command_identity("contacts", "provision-cms-sso", ctx.obj.get("resolved_agent"))
+
+    result = put(f"/contacts/{contact_id}", json={"provision_cms_sso": True})
+    if ctx.obj.get("output_json"):
+        print_json(result)
+        return
+
+    if isinstance(result, dict) and result.get("id"):
+        print_success(f"CMS SSO provisioned for contact: {result['id']}")
+        print_key_value(
+            {
+                "Name": f"{result.get('first_name', '')} {result.get('last_name', '')}".strip(),
+                "Email": result.get("email"),
+                "Portal Access": result.get("portal_access"),
+                "Provisioning": result.get("provisioning_result"),
+            }
+        )
+    else:
+        print_error(str(result))

@@ -91,6 +91,8 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "contacts.enable-portal": "surgeon",
     "contacts.invite": "surgeon",
     "contacts.set-password": "surgeon",
+    "contacts.update": "surgeon",
+    "contacts.provision-cms-sso": "surgeon",
     # flow
     "flow.list": None,
     "flow.show": None,

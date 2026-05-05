@@ -101,3 +101,177 @@ class TestContactsSetPassword:
 
         assert result.exit_code == 1
         assert "Password is too short" in result.output
+
+
+class TestContactsUpdate:
+    def test_update_contact(self, monkeypatch, mock_agent_tokens):
+        requests = []
+
+        def fake_put(path, json=None):
+            requests.append((path, json))
+            return {
+                "id": "contact-uuid",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane@example.com",
+                "phone": "+61 400 000 000",
+                "job_title": "Engineer",
+                "company_name": "Acme",
+            }
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "contacts",
+                "update",
+                "contact-uuid",
+                "--first-name",
+                "Jane",
+                "--last-name",
+                "Doe",
+                "--email",
+                "jane@example.com",
+                "--phone",
+                "+61 400 000 000",
+                "--job-title",
+                "Engineer",
+                "--company-name",
+                "Acme",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert requests == [
+            (
+                "/contacts/contact-uuid",
+                {
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "email": "jane@example.com",
+                    "phone": "+61 400 000 000",
+                    "job_title": "Engineer",
+                    "company_name": "Acme",
+                },
+            )
+        ]
+        assert "Contact contact-uuid updated" in result.output
+        assert "jane@example.com" in result.output
+
+    def test_update_contact_json_output(self, monkeypatch, mock_agent_tokens):
+        def fake_put(path, json=None):
+            return {"id": "contact-uuid", "first_name": "Jane", "email": "jane@example.com"}
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "--json",
+                "contacts",
+                "update",
+                "contact-uuid",
+                "--email",
+                "jane@example.com",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert '"id": "contact-uuid"' in result.output
+        assert '"email": "jane@example.com"' in result.output
+
+    def test_update_contact_validation_error(self, monkeypatch, mock_agent_tokens):
+        def fake_put(path, json=None):
+            return {"error": True, "status_code": 422, "detail": "Invalid email address"}
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "update", "contact-uuid", "--email", "bad-email"],
+        )
+
+        assert result.exit_code == 0  # print_error path
+        assert "Invalid email address" in result.output
+
+    def test_update_contact_no_fields(self, mock_agent_tokens):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "update", "contact-uuid"],
+        )
+
+        assert result.exit_code == 0
+        assert "Nothing to update. Provide at least one field." in result.output
+
+
+class TestContactsProvisionCmsSso:
+    def test_provision_cms_sso(self, monkeypatch, mock_agent_tokens):
+        requests = []
+
+        def fake_put(path, json=None):
+            requests.append((path, json))
+            return {
+                "id": "contact-uuid",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane@example.com",
+                "portal_access": True,
+                "provisioning_result": "cms_sso_ok",
+            }
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "provision-cms-sso", "contact-uuid"],
+        )
+
+        assert result.exit_code == 0
+        assert requests == [("/contacts/contact-uuid", {"provision_cms_sso": True})]
+        assert "CMS SSO provisioned for contact: contact-uuid" in result.output
+        assert "cms_sso_ok" in result.output
+
+    def test_provision_cms_sso_json_output(self, monkeypatch, mock_agent_tokens):
+        def fake_put(path, json=None):
+            return {
+                "id": "contact-uuid",
+                "email": "jane@example.com",
+                "provisioning_result": "cms_sso_ok",
+            }
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "--json", "contacts", "provision-cms-sso", "contact-uuid"],
+        )
+
+        assert result.exit_code == 0
+        assert '"id": "contact-uuid"' in result.output
+        assert '"provisioning_result": "cms_sso_ok"' in result.output
+
+    def test_provision_cms_sso_error(self, monkeypatch, mock_agent_tokens):
+        def fake_put(path, json=None):
+            return {"error": True, "status_code": 422, "detail": "Contact not found"}
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "surgeon", "contacts", "provision-cms-sso", "contact-uuid"],
+        )
+
+        assert result.exit_code == 0  # print_error path
+        assert "Contact not found" in result.output
