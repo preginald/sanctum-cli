@@ -140,6 +140,7 @@ def set_password(ctx: click.Context, contact_id: str) -> None:
 @click.option("--job-title", "-j", default=None, help="New job title")
 @click.option("--company-name", "-c", default=None, help="New company name")
 @click.option("--account-id", "-a", default=None, help="New account UUID")
+@click.option("--primary-contact", is_flag=True, default=None, help="Mark as primary contact")
 @click.pass_context
 def update_contact(
     ctx: click.Context,
@@ -151,6 +152,7 @@ def update_contact(
     job_title: str | None,
     company_name: str | None,
     account_id: str | None,
+    primary_contact: bool | None,
 ) -> None:
     """Update a contact's fields."""
     check_command_identity("contacts", "update", ctx.obj.get("resolved_agent"))
@@ -170,6 +172,8 @@ def update_contact(
         payload["company_name"] = company_name
     if account_id is not None:
         payload["account_id"] = account_id
+    if primary_contact is not None:
+        payload["primary_contact"] = primary_contact
 
     if not payload:
         print_error("Nothing to update. Provide at least one field.")
@@ -187,6 +191,7 @@ def update_contact(
                 "Phone": result.get("phone"),
                 "Job Title": result.get("job_title"),
                 "Company": result.get("company_name"),
+                "Primary Contact": result.get("primary_contact"),
             }
         )
     else:

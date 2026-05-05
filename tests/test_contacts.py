@@ -202,6 +202,44 @@ class TestContactsUpdate:
         assert result.exit_code == 0  # print_error path
         assert "Invalid email address" in result.output
 
+    def test_update_contact_primary_contact(self, monkeypatch, mock_agent_tokens):
+        requests = []
+
+        def fake_put(path, json=None):
+            requests.append((path, json))
+            return {
+                "id": "contact-uuid",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane@example.com",
+                "primary_contact": True,
+            }
+
+        monkeypatch.setattr("sanctum_cli.domains.contacts.put", fake_put)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "contacts",
+                "update",
+                "contact-uuid",
+                "--primary-contact",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert requests == [
+            (
+                "/contacts/contact-uuid",
+                {"primary_contact": True},
+            )
+        ]
+        assert "Contact contact-uuid updated" in result.output
+        assert "True" in result.output
+
     def test_update_contact_no_fields(self, mock_agent_tokens):
         runner = CliRunner()
         result = runner.invoke(
