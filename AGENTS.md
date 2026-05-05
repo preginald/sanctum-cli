@@ -30,6 +30,26 @@
 - `post()` and `put()` return an error dict for HTTP 422 instead of raising; domain commands should inspect that result.
 - All user-facing CLI output should go through `sanctum_cli/display.py`; domain commands should branch on `ctx.obj["output_json"]` for JSON output.
 
+## Sanctum Ticket Lifecycle (SYS-005)
+
+### Statuses
+Full set of ticket statuses: `recon`, `proposal`, `pending`, `new`, `triaging`, `open`, `implementation`, `review`, `resolved`, `closed`.
+
+### Phase Criteria
+Leaving certain statuses requires ticking phase criteria via `--phase-criteria key=true` on `tickets update`:
+- `recon` → `recon_complete`
+- `proposal` → `proposal_approved`
+- `implementation` → `implementation_complete`
+- `review` → `review_approved`
+- `verification` → `verification_passed`
+
+### Transition Rules
+Transitions are enforced server-side and depend on ticket type. Key rules:
+- Feature/task tickets cannot transition directly from `recon` → `resolved`.
+- Valid transitions from `recon` (after phase criteria met): `proposal`, `pending`, `new`.
+- From `pending` the ticket can go to `resolved` (requires time entry or material per Billable Item Gate).
+- Use `sanctum --json --agent surgeon tickets show <id>` to see `available_transitions` for any given ticket.
+
 ## Sanctum Flow CLI (`sanctum flow`)
 
 - Commands: `list`, `show`, `definition-create`, `definition-update`, `definition-publish`, `lint`, `instance-create`, `context-update`, `instance-action`, `update-step`, `simulate`, `simulation-results`.
