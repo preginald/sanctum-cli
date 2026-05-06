@@ -171,11 +171,11 @@ class TestArticlesCreate:
         body = json.loads(request.content)
         assert body["identifier"] == "DOC-001"
 
-    def test_create_without_identifier_auto_generates(self, httpx_mock, mock_agent_tokens):
+    def test_create_without_identifier_omits_field(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
             method="POST",
             url=_ARTICLES_URL,
-            json={"id": "abc-123", "identifier": "MY-ARTICLE"},
+            json={"id": "abc-123", "identifier": "DOC-104"},
         )
         runner = CliRunner()
         result = runner.invoke(
@@ -192,59 +192,7 @@ class TestArticlesCreate:
             ],
         )
         assert result.exit_code == 0
-        assert "Article MY-ARTICLE created" in result.output
+        assert "Article DOC-104 created" in result.output
         request = httpx_mock.get_request()
         body = json.loads(request.content)
-        assert body["identifier"] == "MY-ARTICLE"
-
-    def test_create_without_identifier_uses_uppercase_hyphenated_form(
-        self, httpx_mock, mock_agent_tokens
-    ):
-        httpx_mock.add_response(
-            method="POST",
-            url=_ARTICLES_URL,
-            json={"id": "abc-123", "identifier": "DEPLOYMENT-GUIDE"},
-        )
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "--agent",
-                "scribe",
-                "articles",
-                "create",
-                "-t",
-                "Deployment Guide",
-                "-s",
-                "deployment-guide",
-            ],
-        )
-        assert result.exit_code == 0
-        request = httpx_mock.get_request()
-        body = json.loads(request.content)
-        assert body["identifier"] == "DEPLOYMENT-GUIDE"
-
-    def test_create_strips_special_characters_from_identifier(self, httpx_mock, mock_agent_tokens):
-        httpx_mock.add_response(
-            method="POST",
-            url=_ARTICLES_URL,
-            json={"id": "abc-123", "identifier": "SANCTUM-AI-ROUTER-MVP-OVERVIEW"},
-        )
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "--agent",
-                "scribe",
-                "articles",
-                "create",
-                "-t",
-                "Sanctum AI Router: MVP Overview",
-                "-s",
-                "sanctum-ai-router-mvp-overview",
-            ],
-        )
-        assert result.exit_code == 0
-        request = httpx_mock.get_request()
-        body = json.loads(request.content)
-        assert body["identifier"] == "SANCTUM-AI-ROUTER-MVP-OVERVIEW"
+        assert "identifier" not in body

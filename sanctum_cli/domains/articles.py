@@ -1,7 +1,6 @@
 """Article domain commands."""
 
 import builtins
-import re
 from pathlib import Path
 
 import click
@@ -130,7 +129,7 @@ def list(ctx: click.Context, limit: int) -> None:
     "--identifier",
     "-i",
     default=None,
-    help="Identifier (e.g. DOC-001). Auto-generated from title if omitted.",
+    help="Identifier (e.g. DOC-001). Omit to let API auto-assign one.",
 )
 @click.option("--category", "-c", default="Knowledge Base", help="Article category")
 @click.option(
@@ -148,20 +147,20 @@ def create(
     """Create a new article."""
     check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
 
-    if not identifier:
-        identifier = re.sub(r"[^A-Z0-9]+", "-", title.upper()).strip("-")
-    payload = {
+    payload: dict = {
         "title": title,
         "slug": slug,
-        "identifier": identifier,
         "category": category,
         "content": Path(file).read_text() if file else "",
     }
+    if identifier:
+        payload["identifier"] = identifier
     result = post("/articles", json=payload)
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
-        print_success(f"Article {identifier} created")
+        new_id = result.get("identifier", identifier or "")
+        print_success(f"Article {new_id} created")
     else:
         print_error(str(result))
 
