@@ -138,3 +138,88 @@ class TestArticlesShow:
         assert result.exit_code == 0
         assert "# Full content" in result.output
         assert "Content hidden" not in result.output
+
+
+class TestArticlesCreate:
+    """Tests for articles create command."""
+
+    def test_create_with_explicit_identifier(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="POST",
+            url=_ARTICLES_URL,
+            json={"id": "abc-123", "identifier": "DOC-001"},
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "scribe",
+                "articles",
+                "create",
+                "-t",
+                "My Article",
+                "-s",
+                "my-article",
+                "-i",
+                "DOC-001",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Article DOC-001 created" in result.output
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["identifier"] == "DOC-001"
+
+    def test_create_without_identifier_auto_generates(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="POST",
+            url=_ARTICLES_URL,
+            json={"id": "abc-123", "identifier": "MY-ARTICLE"},
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "scribe",
+                "articles",
+                "create",
+                "-t",
+                "My Article",
+                "-s",
+                "my-article",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Article MY-ARTICLE created" in result.output
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["identifier"] == "MY-ARTICLE"
+
+    def test_create_without_identifier_uses_uppercase_hyphenated_form(
+        self, httpx_mock, mock_agent_tokens
+    ):
+        httpx_mock.add_response(
+            method="POST",
+            url=_ARTICLES_URL,
+            json={"id": "abc-123", "identifier": "DEPLOYMENT-GUIDE"},
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "scribe",
+                "articles",
+                "create",
+                "-t",
+                "Deployment Guide",
+                "-s",
+                "deployment-guide",
+            ],
+        )
+        assert result.exit_code == 0
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["identifier"] == "DEPLOYMENT-GUIDE"

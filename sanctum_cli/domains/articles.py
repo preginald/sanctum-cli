@@ -125,19 +125,30 @@ def list(ctx: click.Context, limit: int) -> None:
 @articles.command()
 @click.option("--title", "-t", required=True, help="Article title")
 @click.option("--slug", "-s", required=True, help="URL-friendly slug")
-@click.option("--identifier", "-i", required=True, help="Identifier (e.g. DOC-001)")
+@click.option(
+    "--identifier",
+    "-i",
+    default=None,
+    help="Identifier (e.g. DOC-001). Auto-generated from title if omitted.",
+)
 @click.option("--category", "-c", default="Knowledge Base", help="Article category")
 @click.option(
     "--file", "-f", type=click.Path(exists=True, dir_okay=False), help="Markdown content file"
 )
 @click.pass_context
 def create(
-    ctx: click.Context, title: str, slug: str, identifier: str, category: str, file: str | None
+    ctx: click.Context,
+    title: str,
+    slug: str,
+    identifier: str | None,
+    category: str,
+    file: str | None,
 ) -> None:
     """Create a new article."""
     check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
 
-    check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
+    if not identifier:
+        identifier = title.upper().replace(" ", "-")
     payload = {
         "title": title,
         "slug": slug,
