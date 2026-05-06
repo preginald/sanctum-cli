@@ -1,6 +1,7 @@
 """Article domain commands."""
 
 import builtins
+import re
 from pathlib import Path
 
 import click
@@ -148,7 +149,7 @@ def create(
     check_command_identity("articles", "create", ctx.obj.get("resolved_agent"))
 
     if not identifier:
-        identifier = title.upper().replace(" ", "-")
+        identifier = re.sub(r"[^A-Z0-9]+", "-", title.upper()).strip("-")
     payload = {
         "title": title,
         "slug": slug,

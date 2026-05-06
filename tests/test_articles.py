@@ -223,3 +223,28 @@ class TestArticlesCreate:
         request = httpx_mock.get_request()
         body = json.loads(request.content)
         assert body["identifier"] == "DEPLOYMENT-GUIDE"
+
+    def test_create_strips_special_characters_from_identifier(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="POST",
+            url=_ARTICLES_URL,
+            json={"id": "abc-123", "identifier": "SANCTUM-AI-ROUTER-MVP-OVERVIEW"},
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "scribe",
+                "articles",
+                "create",
+                "-t",
+                "Sanctum AI Router: MVP Overview",
+                "-s",
+                "sanctum-ai-router-mvp-overview",
+            ],
+        )
+        assert result.exit_code == 0
+        request = httpx_mock.get_request()
+        body = json.loads(request.content)
+        assert body["identifier"] == "SANCTUM-AI-ROUTER-MVP-OVERVIEW"
