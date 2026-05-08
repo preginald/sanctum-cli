@@ -117,9 +117,12 @@ def test_update_product_multiple_fields(monkeypatch):
         [
             "update",
             PRODUCT_ID,
-            "--name", "Updated",
-            "--description", "New desc",
-            "--unit-price", "149.00",
+            "--name",
+            "Updated",
+            "--description",
+            "New desc",
+            "--unit-price",
+            "149.00",
         ],
         obj={"output_json": False, "resolved_agent": "surgeon"},
     )
