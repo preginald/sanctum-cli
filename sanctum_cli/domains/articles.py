@@ -208,7 +208,21 @@ def update(
         print_error("Nothing to update. Provide --title, --file, or both.")
         return
 
-    result = put(f"/articles/{slug_or_id}", json=payload)
+    try:
+        result = put(f"/articles/{slug_or_id}", json=payload)
+    except httpx.HTTPStatusError as exc:
+        if ctx.obj.get("output_json"):
+            print_json(
+                {
+                    "error": True,
+                    "status_code": exc.response.status_code,
+                    "detail": exc.response.text,
+                }
+            )
+            raise SystemExit(1) from exc
+        print_error(f"Article update failed ({exc.response.status_code}): {exc.response.text}")
+        raise SystemExit(1) from exc
+
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
