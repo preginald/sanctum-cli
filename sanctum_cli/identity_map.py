@@ -45,6 +45,8 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "templates.update": "surgeon",
     # products
     "products.list": None,
+    "products.show": None,
+    "products.update": None,
     # rate_cards
     "rate_cards.list": None,
     "rate_cards.lookup": None,
