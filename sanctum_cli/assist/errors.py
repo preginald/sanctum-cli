@@ -22,6 +22,26 @@ GLOBAL_FLAGS = {
     "--assist",
 }
 VALUE_FLAGS = {"--agent", "-a", "--user", "-u", "--env", "-e"}
+READ_ACTIONS = {"list", "show", "search", "health", "status", "lint"}
+DOMAIN_DEFAULT_AGENTS = {
+    "articles": "scribe",
+    "artefacts": "surgeon",
+    "contacts": "surgeon",
+    "flow": "architect",
+    "forms": "surgeon",
+    "invoices": "oracle",
+    "milestones": "surgeon",
+    "mockups": "surgeon",
+    "notify": "scribe",
+    "products": "oracle",
+    "projects": "surgeon",
+    "rate-cards": "oracle",
+    "search": "oracle",
+    "templates": "surgeon",
+    "tickets": "surgeon",
+    "time-entries": "surgeon",
+    "workbench": "surgeon",
+}
 SINGULAR_GROUPS = {
     "ticket": "tickets",
     "article": "articles",
@@ -32,6 +52,9 @@ SINGULAR_GROUPS = {
     "product": "products",
     "template": "templates",
     "mockup": "mockups",
+    "artefact": "artefacts",
+    "time-entry": "time-entries",
+    "rate-card": "rate-cards",
 }
 
 
@@ -101,12 +124,32 @@ def parse_cli_error(error_output: str) -> ParsedCliError:
             option=missing_option.group("option"),
         )
 
+    option_requires_arg = re.search(
+        r"Option ['\"](?P<option>--?[\w-]+)['\"] requires an argument", output
+    )
+    if option_requires_arg:
+        return ParsedCliError(
+            error_class="option_requires_argument",
+            message=output,
+            option=option_requires_arg.group("option"),
+        )
+
     extra_argument = re.search(r"Got unexpected extra argument \((?P<argument>[^)]+)\)", output)
     if extra_argument:
         return ParsedCliError(
             error_class="unexpected_extra_argument",
             message=output,
             argument=extra_argument.group("argument"),
+        )
+
+    invalid_argument = re.search(
+        r"Invalid value for ['\"](?P<argument>[A-Z_]+)['\"]: (?P<detail>.+)", output
+    )
+    if invalid_argument:
+        return ParsedCliError(
+            error_class="invalid_argument",
+            message=output,
+            argument=invalid_argument.group("argument").lower(),
         )
 
     invalid_choice = re.search(
@@ -141,8 +184,13 @@ def explain_error(
         or _explain_did_you_mean(tokens, parsed)
         or _explain_singular_group(tokens, parsed)
         or _explain_missing_option(parsed)
+        or _explain_missing_identity(tokens, error_output)
+        or _explain_flow_api_key(tokens, error_output)
+        or _explain_content_flag(tokens, parsed, error_output)
+        or _explain_time_entry_positionals(tokens, parsed)
         or _explain_unexpected_extra_argument(tokens, parsed)
         or _explain_invalid_choice(parsed)
+        or _explain_invalid_argument(parsed)
         or _unsupported(error_output)
     )
     if root is not None and explanation.generated_command:
@@ -268,6 +316,135 @@ def _explain_missing_option(parsed: ParsedCliError) -> AssistExplanation | None:
     )
 
 
+def _explain_missing_identity(tokens: list[str], error_output: str) -> AssistExplanation | None:
+    if "--agent <name> or --user <email> is required" not in error_output:
+        return None
+    if any(token in {"--agent", "-a", "--user", "-u"} for token in tokens):
+        return None
+
+    command_path = _command_path(tokens)
+    domain = command_path[0] if command_path else None
+    agent = DOMAIN_DEFAULT_AGENTS.get(domain or "")
+    if not agent:
+        return AssistExplanation(
+            status="assist_missing_fields",
+            error_class="missing_identity",
+            inferred_intent="Provide an agent or user identity before running the command.",
+            generated_command=None,
+            risk="unknown",
+            confidence=0.9,
+            needs_confirmation=True,
+            message="Sanctum commands require --agent <name> or --user <email>.",
+            missing_fields=("--agent",),
+        )
+
+    corrected = ["--agent", agent, *tokens]
+    command_label = " ".join(command_path) or "the command"
+    return AssistExplanation(
+        status="assist_suggestion",
+        error_class="missing_identity",
+        inferred_intent=f"Run {command_label} using the default {agent} identity for {domain}.",
+        generated_command=_format_command(corrected),
+        risk=_risk_for_path(command_path),
+        confidence=0.92,
+        needs_confirmation=False,
+        message=f"Add --agent {agent} before the command group.",
+        details={"domain": domain, "agent": agent},
+    )
+
+
+def _explain_flow_api_key(tokens: list[str], error_output: str) -> AssistExplanation | None:
+    command_path = _command_path(tokens)
+    if not command_path or command_path[0] != "flow":
+        return None
+    normalized = error_output.lower()
+    if not any(term in normalized for term in ("api key", "x-api-key", "audience", "unauthorized")):
+        return None
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="missing_flow_api_key",
+        inferred_intent=(
+            "Authenticate the Flow command with a Flow API key, not a Core bearer token."
+        ),
+        generated_command=None,
+        risk=_risk_for_path(command_path),
+        confidence=0.93,
+        needs_confirmation=True,
+        message=(
+            "Provide --api-key or set SANCTUM_FLOW_API_KEY/FLOW_API_KEY. Do not paste or log "
+            "the key in assist output."
+        ),
+        missing_fields=("--api-key",),
+    )
+
+
+def _explain_content_flag(
+    tokens: list[str], parsed: ParsedCliError, error_output: str
+) -> AssistExplanation | None:
+    if parsed.option != "--content" or "requires an argument" not in error_output.lower():
+        return None
+    command_path = _command_path(tokens)
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="content_flag_missing_value",
+        inferred_intent=(
+            "Provide content text for --content or use the file option where supported."
+        ),
+        generated_command=None,
+        risk=_risk_for_path(command_path),
+        confidence=0.88,
+        needs_confirmation=True,
+        message=(
+            "--content requires a value on write commands such as artefacts/mockups. For articles, "
+            "prefer --file when creating or updating body content."
+        ),
+        missing_fields=("--content",),
+        details={"parsed_error": parsed.to_dict()},
+    )
+
+
+def _explain_time_entry_positionals(
+    tokens: list[str], parsed: ParsedCliError
+) -> AssistExplanation | None:
+    if parsed.error_class != "unexpected_extra_argument":
+        return None
+    command_path = _command_path(tokens)
+    if command_path != ["time-entries", "create"]:
+        return None
+
+    start = _first_non_option_index_after_path(tokens, command_path)
+    if start is None:
+        return None
+    positional_values = [token for token in tokens[start:] if not token.startswith("-")]
+    if len(positional_values) < 3:
+        return None
+
+    corrected = tokens[:start] + [
+        "--ticket-id",
+        positional_values[0],
+        "--start",
+        positional_values[1],
+        "--end",
+        positional_values[2],
+    ]
+    if len(positional_values) > 3:
+        corrected.extend(["--description", " ".join(positional_values[3:])])
+
+    return AssistExplanation(
+        status="assist_suggestion",
+        error_class="positional_values_for_options",
+        inferred_intent="Create a time entry using option flags instead of positional values.",
+        generated_command=_format_command(corrected),
+        risk="write",
+        confidence=0.86,
+        needs_confirmation=True,
+        message=(
+            "Map positional time-entry values to --ticket-id, --start, --end, and --description."
+        ),
+        details={"parsed_error": parsed.to_dict()},
+    )
+
+
 def _explain_unexpected_extra_argument(
     tokens: list[str], parsed: ParsedCliError
 ) -> AssistExplanation | None:
@@ -306,6 +483,26 @@ def _explain_invalid_choice(parsed: ParsedCliError) -> AssistExplanation | None:
         needs_confirmation=True,
         message=f"{parsed.option} must be one of: {choices}.",
         missing_fields=(parsed.option,),
+        details={"parsed_error": parsed.to_dict()},
+    )
+
+
+def _explain_invalid_argument(parsed: ParsedCliError) -> AssistExplanation | None:
+    if parsed.error_class != "invalid_argument" or not parsed.argument:
+        return None
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="invalid_identifier",
+        inferred_intent=f"Provide a valid value for {parsed.argument}.",
+        generated_command=None,
+        risk="unknown",
+        confidence=0.87,
+        needs_confirmation=True,
+        message=(
+            f"{parsed.argument} has the wrong shape or type. Use the numeric ID/UUID expected by "
+            "the command, or resolve the entity by name first where supported."
+        ),
+        missing_fields=(parsed.argument,),
         details={"parsed_error": parsed.to_dict()},
     )
 
@@ -366,6 +563,40 @@ def _command_path(tokens: list[str]) -> list[str]:
             break
         index += 1
     return path
+
+
+def _first_non_option_index_after_path(tokens: list[str], path: list[str]) -> int | None:
+    path_index = 0
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token in VALUE_FLAGS:
+            index += 2
+            continue
+        if token in GLOBAL_FLAGS:
+            index += 1
+            continue
+        if path_index < len(path) and token == path[path_index]:
+            path_index += 1
+            index += 1
+            if path_index == len(path):
+                return index
+            continue
+        index += 1
+    return None
+
+
+def _risk_for_path(path: list[str]) -> str:
+    if not path:
+        return "unknown"
+    action = path[1] if len(path) > 1 else path[0]
+    if action in READ_ACTIONS:
+        return "read"
+    if action in {"send", "send-receipt", "publish", "instance-action"}:
+        return "external_effect"
+    if action in {"delete", "revoke", "rotate"}:
+        return "destructive"
+    return "write"
 
 
 def _format_command(tokens: list[str]) -> str:

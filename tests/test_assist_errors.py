@@ -76,6 +76,79 @@ def test_explain_error_reports_invalid_choice_options():
     assert "new, open" in explanation.message
 
 
+def test_explain_error_adds_default_agent_for_known_domain():
+    explanation = explain_error(
+        "sanctum tickets list",
+        "Error: --agent <name> or --user <email> is required",
+        root=main,
+    )
+
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "missing_identity"
+    assert explanation.generated_command == "sanctum --agent surgeon tickets list"
+    assert explanation.risk == "read"
+    assert explanation.validation == "valid"
+
+
+def test_explain_error_reports_flow_api_key_requirement():
+    explanation = explain_error(
+        "sanctum --agent architect flow list",
+        "Error: Unauthorized: Flow requires an X-API-Key; Core bearer audience is invalid.",
+        root=main,
+    )
+
+    assert explanation.status == "assist_missing_fields"
+    assert explanation.error_class == "missing_flow_api_key"
+    assert explanation.missing_fields == ("--api-key",)
+    assert explanation.generated_command is None
+    assert "SANCTUM_FLOW_API_KEY" in explanation.message
+
+
+def test_explain_error_reports_content_flag_missing_value():
+    explanation = explain_error(
+        "sanctum --agent surgeon mockups update 123 --content",
+        "Error: Option '--content' requires an argument.",
+        root=main,
+    )
+
+    assert explanation.status == "assist_missing_fields"
+    assert explanation.error_class == "content_flag_missing_value"
+    assert explanation.missing_fields == ("--content",)
+    assert explanation.needs_confirmation is True
+
+
+def test_explain_error_maps_time_entry_positionals_to_options():
+    explanation = explain_error(
+        "sanctum --agent surgeon time-entries create 3421 2026-05-11T01:00:00Z "
+        "2026-05-11T01:15:00Z deterministic patterns",
+        "Error: Got unexpected extra argument (3421)",
+        root=main,
+    )
+
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "positional_values_for_options"
+    assert explanation.generated_command == (
+        "sanctum --agent surgeon time-entries create --ticket-id 3421 "
+        "--start 2026-05-11T01:00:00Z --end 2026-05-11T01:15:00Z "
+        "--description 'deterministic patterns'"
+    )
+    assert explanation.risk == "write"
+    assert explanation.needs_confirmation is True
+
+
+def test_explain_error_reports_invalid_identifier_shape():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets show abc",
+        "Error: Invalid value for 'TICKET_ID': 'abc' is not a valid integer.",
+        root=main,
+    )
+
+    assert explanation.status == "assist_missing_fields"
+    assert explanation.error_class == "invalid_identifier"
+    assert explanation.missing_fields == ("ticket_id",)
+    assert explanation.generated_command is None
+
+
 def test_explain_error_command_outputs_json(mock_agent_tokens):
     result = CliRunner().invoke(
         main,
