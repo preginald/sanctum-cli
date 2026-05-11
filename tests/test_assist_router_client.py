@@ -6,6 +6,7 @@ from sanctum_cli.assist.router_client import (
     RouterClient,
     RouterClientError,
     build_router_interpret_request,
+    get_router_client,
 )
 from sanctum_cli.cli import main
 
@@ -104,3 +105,25 @@ def test_router_client_reports_http_errors(httpx_mock):
         client.interpret(request)
 
     assert exc.value.status_code == 403
+
+
+def test_get_router_client_returns_client_when_token_set(monkeypatch):
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-token")
+    client = get_router_client()
+    assert client is not None
+    assert client.token == "test-token"
+
+
+def test_get_router_client_returns_none_when_no_token(monkeypatch):
+    monkeypatch.delenv("SANCTUM_ROUTER_TOKEN", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_JWT", raising=False)
+    client = get_router_client()
+    assert client is None
+
+
+def test_get_router_client_prefers_jwt_fallback(monkeypatch):
+    monkeypatch.delenv("SANCTUM_ROUTER_TOKEN", raising=False)
+    monkeypatch.setenv("SANCTUM_ROUTER_JWT", "test-jwt")
+    client = get_router_client()
+    assert client is not None
+    assert client.token == "test-jwt"

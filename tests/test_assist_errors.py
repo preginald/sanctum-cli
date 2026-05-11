@@ -3,6 +3,7 @@
 from click.testing import CliRunner
 
 from sanctum_cli.assist.errors import explain_error, parse_cli_error
+from sanctum_cli.assist.router_client import RouterClient
 from sanctum_cli.cli import main
 
 
@@ -179,3 +180,105 @@ def test_assist_activation_renders_suggestion_for_malformed_command(mock_agent_t
     assert result.exit_code == 1
     assert "Sanctum CLI Assist detected a malformed command." in result.output
     assert "sanctum --assist --agent surgeon --json tickets show" in result.output
+
+
+def test_router_fallback_fires_when_deterministic_unsupported(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        url="https://router.digitalsanctum.com.au/v1/cli-interpret",
+        json={
+            "status": "interpreted",
+            "confidence": 0.72,
+            "match_type": "partial",
+            "inferred_intent": "List all open tickets",
+            "operation_plan": [
+                {
+                    "domain": "tickets",
+                    "action": "list",
+                    "parameters": {"status": "open"},
+                    "risk": "read",
+                }
+            ],
+            "needs_confirmation": False,
+            "message": "Interpreted via Router.",
+        },
+    )
+
+    client = RouterClient(token="test-token")
+    explanation = explain_error(
+        "sanctum --agent surgeon unknown-command arg1",
+        "Error: totally unexpected error format that no parser can match",
+        root=main,
+        calling_agent="surgeon",
+        router=client,
+    )
+
+    assert explanation.status == "router_interpreted"
+    assert explanation.error_class == "router_partial"
+    assert explanation.confidence == 0.72
+    assert explanation.generated_command == "sanctum --agent surgeon tickets list --status open"
+    assert explanation.inferred_intent == "List all open tickets"
+    assert explanation.details.get("router_response") is not None
+
+
+def test_router_fallback_skipped_when_deterministic_matches(httpx_mock):
+    client = RouterClient(token="test-token")
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets show --json 3293",
+        "Error: No such option: --json",
+        root=main,
+        calling_agent="surgeon",
+        router=client,
+    )
+
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "misplaced_global_flag"
+    assert explanation.generated_command == "sanctum --agent surgeon --json tickets show 3293"
+
+
+def test_router_fallback_handles_http_error_gracefully(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        url="https://router.digitalsanctum.com.au/v1/cli-interpret",
+        status_code=500,
+    )
+
+    client = RouterClient(token="test-token")
+    explanation = explain_error(
+        "sanctum --agent surgeon unknown-thing arg",
+        "Error: completely unrecognizable error",
+        root=main,
+        calling_agent="surgeon",
+        router=client,
+    )
+
+    assert explanation.status == "assist_unsupported"
+    assert explanation.error_class == "unsupported_error"
+
+
+def test_router_fallback_skipped_when_no_router_provided():
+    explanation = explain_error(
+        "sanctum --agent surgeon unknown-thing arg",
+        "Error: completely unrecognizable error",
+        root=main,
+        calling_agent="surgeon",
+        router=None,
+    )
+
+    assert explanation.status == "assist_unsupported"
+    assert explanation.error_class == "unsupported_error"
+
+
+def test_router_fallback_skipped_when_no_calling_agent(httpx_mock):
+    """Router fallback requires calling_agent to build the operation plan command."""
+    client = RouterClient(token="test-token")
+    explanation = explain_error(
+        "sanctum --agent surgeon unknown-thing arg",
+        "Error: completely unrecognizable error",
+        root=main,
+        calling_agent=None,
+        router=client,
+    )
+
+    assert explanation.status == "assist_unsupported"
+    assert explanation.error_class == "unsupported_error"

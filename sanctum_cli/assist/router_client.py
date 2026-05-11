@@ -240,3 +240,11 @@ class RouterClient:
             sanitized_context=sanitized_context,
         )
         return self.interpret(request)
+
+
+def get_router_client() -> RouterClient | None:
+    """Return a RouterClient if a Router token is configured, else None."""
+    token = os.getenv("SANCTUM_ROUTER_TOKEN") or os.getenv("SANCTUM_ROUTER_JWT")
+    if not token:
+        return None
+    return RouterClient(token=token)

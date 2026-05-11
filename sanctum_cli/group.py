@@ -6,6 +6,7 @@ import sys
 import click
 
 from sanctum_cli.assist.errors import explain_error, render_explanation_text
+from sanctum_cli.assist.router_client import get_router_client
 from sanctum_cli.display import print_json
 
 _GLOBAL_FLAGS: dict[str, str] = {
@@ -72,6 +73,8 @@ class HelpfulGroup(click.Group):
                 explanation = explain_error(
                     failed_command,
                     f"Error: No such option: {e.option_name}",
+                    calling_agent=ctx.find_root().obj.get("resolved_agent"),
+                    router=get_router_client(),
                 )
                 if ctx.find_root().obj.get("output_json"):
                     print_json(explanation.to_dict())

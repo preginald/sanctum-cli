@@ -9,6 +9,13 @@ from typing import Any
 
 import click
 
+from sanctum_cli.assist.router_client import (
+    RouterClient,
+    RouterClientError,
+    RouterInterpretResponse,
+    RouterOperationPlanStep,
+)
+
 GLOBAL_FLAGS = {
     "--json",
     "--debug",
@@ -174,8 +181,14 @@ def explain_error(
     error_output: str,
     *,
     root: click.Group | None = None,
+    calling_agent: str | None = None,
+    router: RouterClient | None = None,
 ) -> AssistExplanation:
-    """Explain a failed Sanctum command using deterministic repair patterns."""
+    """Explain a failed Sanctum command using deterministic repair patterns.
+
+    When deterministic repair cannot produce a result the Router is consulted
+    as a fallback for LLM-backed error interpretation.
+    """
 
     tokens = _command_tokens(failed_command)
     parsed = parse_cli_error(error_output)
@@ -193,6 +206,17 @@ def explain_error(
         or _explain_invalid_argument(parsed)
         or _unsupported(error_output)
     )
+    if explanation.status == "assist_unsupported" and router is not None and calling_agent:
+        try:
+            router_response = router.interpret_error(
+                failed_command=failed_command,
+                error_output=error_output,
+                calling_agent=calling_agent,
+                root=root,
+            )
+            explanation = _router_response_to_explanation(router_response, calling_agent)
+        except RouterClientError:
+            pass
     if root is not None and explanation.generated_command:
         validation = _validate_command(root, explanation.generated_command)
         return AssistExplanation(**{**explanation.to_dict(), "validation": validation})
@@ -601,6 +625,48 @@ def _risk_for_path(path: list[str]) -> str:
 
 def _format_command(tokens: list[str]) -> str:
     return "sanctum " + shlex.join(tokens)
+
+
+def _router_response_to_explanation(
+    response: RouterInterpretResponse,
+    calling_agent: str,
+) -> AssistExplanation:
+    """Convert a Router interpretation response into an AssistExplanation."""
+    generated: str | None = None
+    risk: str = response.operation_plan[0].risk if response.operation_plan else "unknown"
+
+    if response.operation_plan:
+        step = response.operation_plan[0]
+        tokens = _operation_step_to_tokens(step, calling_agent)
+        generated = _format_command(tokens) if tokens else None
+
+    return AssistExplanation(
+        status=f"router_{response.status}",
+        error_class=f"router_{response.match_type}",
+        inferred_intent=response.inferred_intent,
+        generated_command=generated,
+        risk=risk,
+        confidence=response.confidence,
+        needs_confirmation=response.needs_confirmation,
+        message=response.message,
+        details={"router_response": response.to_dict()},
+    )
+
+
+def _operation_step_to_tokens(
+    step: RouterOperationPlanStep,
+    calling_agent: str,
+) -> list[str]:
+    """Convert a Router operation plan step to CLI command tokens."""
+    tokens: list[str] = ["--agent", calling_agent, step.domain, step.action]
+    for key, value in step.parameters.items():
+        flag = "--" + key.replace("_", "-")
+        if isinstance(value, bool):
+            if value:
+                tokens.append(flag)
+        else:
+            tokens.extend([flag, str(value)])
+    return tokens
 
 
 def _validate_command(root: click.Group, command: str) -> str:

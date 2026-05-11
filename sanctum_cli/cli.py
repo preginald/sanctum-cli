@@ -8,6 +8,7 @@ import click
 
 from sanctum_cli.assist.errors import explain_error as explain_cli_error
 from sanctum_cli.assist.errors import render_explanation_text
+from sanctum_cli.assist.router_client import get_router_client
 from sanctum_cli.auth import ensure_auth
 from sanctum_cli.display import print_error, print_json
 from sanctum_cli.group import HelpfulGroup
@@ -104,7 +105,13 @@ def login(env: str | None, agent: str | None, user: str | None) -> None:
 def explain_error(ctx: click.Context, failed_command: str, error_output: str) -> None:
     """Explain a failed CLI command and suggest a safe correction."""
 
-    explanation = explain_cli_error(failed_command, error_output, root=main)
+    explanation = explain_cli_error(
+        failed_command,
+        error_output,
+        root=main,
+        calling_agent=ctx.obj.get("resolved_agent"),
+        router=get_router_client(),
+    )
     if ctx.obj.get("output_json"):
         print_json(explanation.to_dict())
     else:
