@@ -7,13 +7,53 @@ import click
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
 from sanctum_cli.domains.projects import _resolve_project_id
-from sanctum_client.client import get, put
+from sanctum_client.client import get, post, put
 
 
 @click.group()
 def milestones() -> None:
     """Manage milestones."""
     pass
+
+
+@milestones.command()
+@click.option("--project-id", "-p", required=True, help="Project name or UUID")
+@click.option("--name", "-n", required=True, help="Milestone name")
+@click.option("--description", "-d", default=None, help="Milestone description")
+@click.option("--status", "-s", default=None, help="Initial milestone status")
+@click.option("--due-date", default=None, help="Due date (YYYY-MM-DD)")
+@click.option("--sequence", type=int, default=None, help="Sequence number")
+@click.pass_context
+def create(
+    ctx: click.Context,
+    project_id: str,
+    name: str,
+    description: str | None,
+    status: str | None,
+    due_date: str | None,
+    sequence: int | None,
+) -> None:
+    """Create a milestone for a project."""
+    check_command_identity("milestones", "create", ctx.obj.get("resolved_agent"))
+    project_id = _resolve_project_id(project_id)
+
+    payload: dict = {"project_id": project_id, "name": name}
+    if description is not None:
+        payload["description"] = description
+    if status is not None:
+        payload["status"] = status
+    if due_date is not None:
+        payload["due_date"] = due_date
+    if sequence is not None:
+        payload["sequence"] = sequence
+
+    result = post("/milestones", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Milestone created: {result.get('name', name)}")
+    else:
+        print_error(str(result))
 
 
 @milestones.command()

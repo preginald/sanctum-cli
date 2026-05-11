@@ -19,6 +19,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "articles.create": "scribe",
     "articles.update": "scribe",
     # milestones
+    "milestones.create": "surgeon",
     "milestones.list": None,
     "milestones.show": None,
     "milestones.update": None,
