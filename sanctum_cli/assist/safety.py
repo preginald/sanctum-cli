@@ -23,12 +23,8 @@ RISK_EXECUTION_RULES: dict[SafetyRisk, str] = {
         "Requires explicit confirmation unless caller provides a trusted non-interactive "
         "confirmation flag."
     ),
-    SafetyRisk.EXTERNAL_EFFECT: (
-        "Requires explicit confirmation and expected outcome summary."
-    ),
-    SafetyRisk.DESTRUCTIVE: (
-        "Refuse by default; requires explicit operator-level confirmation."
-    ),
+    SafetyRisk.EXTERNAL_EFFECT: ("Requires explicit confirmation and expected outcome summary."),
+    SafetyRisk.DESTRUCTIVE: ("Refuse by default; requires explicit operator-level confirmation."),
     SafetyRisk.UNKNOWN: "Requires confirmation before execution.",
 }
 

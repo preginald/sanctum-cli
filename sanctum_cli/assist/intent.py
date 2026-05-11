@@ -276,9 +276,7 @@ def _validate_parameters(
         param_map[name] = param
     param_map[command.name] = param_map.get(
         command.name,
-        ParameterSchema(
-            name=command.name, kind="argument", required=False, type="text"
-        ),
+        ParameterSchema(name=command.name, kind="argument", required=False, type="text"),
     )
 
     for param in command.parameters:
