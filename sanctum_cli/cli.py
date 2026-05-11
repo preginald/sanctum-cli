@@ -53,6 +53,7 @@ def main(
     ctx.obj["yes"] = yes
     ctx.obj["assist"] = assist or os.getenv("SANCTUM_CLI_ASSIST") == "1"
     ctx.obj["output_json"] = output_json
+    ctx.obj["root_group"] = main
 
     if ctx.invoked_subcommand not in ("login", "version", None):
         if not agent and not user:
@@ -121,6 +122,7 @@ def explain_error(ctx: click.Context, failed_command: str, error_output: str) ->
 # ruff: noqa: E402 — domain imports must be after main() definition
 from sanctum_cli.domains.artefacts_ import artefacts
 from sanctum_cli.domains.articles import articles
+from sanctum_cli.domains.assist_ import assist
 from sanctum_cli.domains.capture_execute import capture_execute
 from sanctum_cli.domains.contacts import contacts
 from sanctum_cli.domains.flow import flow
@@ -155,6 +157,7 @@ main.add_command(time_entries)
 main.add_command(artefacts)
 main.add_command(notify)
 main.add_command(mockups)
+main.add_command(assist)
 main.add_command(forms)
 
 

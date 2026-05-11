@@ -87,6 +87,8 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "forms.submissions.delete": None,
     "forms.submissions.update": None,
     "forms.submissions.share-token": None,
+    # assist
+    "assist.assist": None,
     # capture_execute
     "capture_execute.capture": None,
     "capture_execute.execute": None,
