@@ -1,6 +1,12 @@
 """Custom Click group with alias support and 'did you mean' suggestions."""
 
+import shlex
+import sys
+
 import click
+
+from sanctum_cli.assist.errors import explain_error, render_explanation_text
+from sanctum_cli.display import print_json
 
 _GLOBAL_FLAGS: dict[str, str] = {
     "--json": "sanctum --json --agent surgeon <command>",
@@ -61,6 +67,18 @@ class HelpfulGroup(click.Group):
         try:
             return super().invoke(ctx)
         except click.NoSuchOption as e:
+            if _assist_enabled(ctx):
+                failed_command = _failed_command(ctx, e.option_name)
+                explanation = explain_error(
+                    failed_command,
+                    f"Error: No such option: {e.option_name}",
+                )
+                if ctx.find_root().obj.get("output_json"):
+                    print_json(explanation.to_dict())
+                else:
+                    click.echo(render_explanation_text(explanation))
+                raise click.exceptions.Exit(1) from e
+
             hint = _GLOBAL_FLAGS.get(e.option_name)
             if hint:
                 raise click.UsageError(
@@ -72,3 +90,41 @@ class HelpfulGroup(click.Group):
                     f"  Correct:  {hint}"
                 ) from e
             raise
+
+
+def _assist_enabled(ctx: click.Context) -> bool:
+    root_obj = ctx.find_root().obj or {}
+    return bool(root_obj.get("assist"))
+
+
+def _failed_command(ctx: click.Context, option_name: str | None) -> str:
+    argv = "sanctum " + shlex.join(sys.argv[1:])
+    if option_name and option_name in argv:
+        return argv
+
+    root = ctx.find_root()
+    root_params = root.params
+    tokens: list[str] = []
+    if root_params.get("assist"):
+        tokens.append("--assist")
+    if root_params.get("env"):
+        tokens.extend(["--env", root_params["env"]])
+    if root_params.get("agent"):
+        tokens.extend(["--agent", root_params["agent"]])
+    if root_params.get("user"):
+        tokens.extend(["--user", root_params["user"]])
+    if root_params.get("yes"):
+        tokens.append("--yes")
+    if root_params.get("output_json"):
+        tokens.append("--json")
+    if root_params.get("debug"):
+        tokens.append("--debug")
+
+    command_parts = ctx.command_path.split()[1:]
+    tokens.extend(command_parts)
+    if ctx.invoked_subcommand:
+        tokens.append(ctx.invoked_subcommand)
+    if option_name:
+        tokens.append(option_name)
+    tokens.extend(ctx.args)
+    return "sanctum " + shlex.join(tokens)

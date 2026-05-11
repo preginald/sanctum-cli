@@ -1,12 +1,15 @@
 """Sanctum CLI — root Click group with global flags."""
 
 import logging
+import os
 import sys
 
 import click
 
+from sanctum_cli.assist.errors import explain_error as explain_cli_error
+from sanctum_cli.assist.errors import render_explanation_text
 from sanctum_cli.auth import ensure_auth
-from sanctum_cli.display import print_error
+from sanctum_cli.display import print_error, print_json
 from sanctum_cli.group import HelpfulGroup
 
 logging.basicConfig(level=logging.WARNING, format="%(name)s %(levelname)s: %(message)s")
@@ -24,6 +27,7 @@ log = logging.getLogger(__name__)
     "--user", "-u", type=str, default=None, help="Human user email (saves PAT to ~/.sanctum/users/)"
 )
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
+@click.option("--assist", is_flag=True, help="Enable CLI Assist for this invocation")
 @click.option("--json", "output_json", is_flag=True, help="Output raw JSON")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
@@ -33,6 +37,7 @@ def main(
     agent: str | None,
     user: str | None,
     yes: bool,
+    assist: bool,
     output_json: bool,
     debug: bool,
 ) -> None:
@@ -45,6 +50,7 @@ def main(
     ctx.obj["agent"] = agent
     ctx.obj["user"] = user
     ctx.obj["yes"] = yes
+    ctx.obj["assist"] = assist or os.getenv("SANCTUM_CLI_ASSIST") == "1"
     ctx.obj["output_json"] = output_json
 
     if ctx.invoked_subcommand not in ("login", "version", None):
@@ -89,6 +95,20 @@ def login(env: str | None, agent: str | None, user: str | None) -> None:
         sys.exit(1)
     ensure_auth(env=env, agent=agent, user=user)
     click.echo("Authenticated.")
+
+
+@main.command("explain-error")
+@click.option("--failed-command", required=True, help="Failed sanctum command line")
+@click.option("--error-output", required=True, help="Error output from the failed command")
+@click.pass_context
+def explain_error(ctx: click.Context, failed_command: str, error_output: str) -> None:
+    """Explain a failed CLI command and suggest a safe correction."""
+
+    explanation = explain_cli_error(failed_command, error_output, root=main)
+    if ctx.obj.get("output_json"):
+        print_json(explanation.to_dict())
+    else:
+        click.echo(render_explanation_text(explanation))
 
 
 # ruff: noqa: E402 — domain imports must be after main() definition
