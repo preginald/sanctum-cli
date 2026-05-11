@@ -37,7 +37,7 @@ def create(
     check_command_identity("milestones", "create", ctx.obj.get("resolved_agent"))
     project_id = _resolve_project_id(project_id)
 
-    payload: dict = {"project_id": project_id, "name": name}
+    payload: dict = {"name": name}
     if description is not None:
         payload["description"] = description
     if status is not None:
@@ -47,7 +47,7 @@ def create(
     if sequence is not None:
         payload["sequence"] = sequence
 
-    result = post("/milestones", json=payload)
+    result = post(f"/projects/{project_id}/milestones", json=payload)
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:

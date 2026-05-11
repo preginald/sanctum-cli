@@ -42,9 +42,8 @@ def test_create_milestone_for_project_uuid(monkeypatch):
     assert calls == [
         (
             "POST",
-            "/milestones",
+            f"/projects/{project_id}/milestones",
             {
-                "project_id": project_id,
                 "name": "Phase 2",
                 "description": "Router-backed intent interpretation",
                 "status": "active",
