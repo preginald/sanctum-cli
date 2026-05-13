@@ -273,10 +273,15 @@ class TestTemplateCompliance:
         assert "## Expected Results" in result
         assert "## Acceptance Criteria" in result
 
-    def test_already_structured_left_unchanged(self):
+    def test_partial_headings_appends_missing_sections(self):
         desc = "## Objective\n\nDo the thing\n\n## Requirements\n\nNone"
         result = _ensure_template_compliance(desc, "feature")
-        assert result == desc
+        assert "## Objective" in result
+        assert "## Requirements" in result
+        assert "## Test Plan" in result
+        assert "## Acceptance Criteria" in result
+        assert "Do the thing" in result
+        assert "None" in result
 
     def test_empty_description_returns_empty(self):
         assert _ensure_template_compliance("", "feature") == ""
@@ -287,11 +292,24 @@ class TestTemplateCompliance:
         result = _ensure_template_compliance(desc, "support")
         assert result == desc
 
-    def test_bug_template_has_steps_sections(self):
+    def test_bug_template_has_required_sections(self):
         result = _ensure_template_compliance("Button not working", "bug")
-        assert "## Steps to Reproduce" in result
-        assert "## Expected Behaviour" in result
-        assert "## Actual Behaviour" in result
+        assert "## Bug" in result
+        assert "## Root Cause" in result
+        assert "## Acceptance Criteria" in result
+
+    def test_bug_with_aliased_heading(self):
+        result = _ensure_template_compliance("## Problem\n\nBroken thing", "bug")
+        assert "## Bug" in result
+        assert "Broken thing" in result
+
+    def test_partial_headings_appends_missing(self):
+        result = _ensure_template_compliance(
+            "## Bug\n\nThe form crashes\n\n## Root Cause\n\nNull pointer", "bug"
+        )
+        assert "## Bug" in result
+        assert "## Root Cause" in result
+        assert "## Acceptance Criteria" in result
 
 
 class TestTicketCommentBodyFile:

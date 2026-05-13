@@ -27,31 +27,55 @@ _TEMPLATE_SECTIONS: dict[str, list[str]] = {
     "feature": ["## Objective", "## Requirements", "## Test Plan", "## Acceptance Criteria"],
     "task": ["## Objective", "## Requirements", "## Test Plan", "## Acceptance Criteria"],
     "bug": [
-        "## Objective",
-        "## Steps to Reproduce",
-        "## Expected Behaviour",
-        "## Actual Behaviour",
+        "## Bug",
+        "## Root Cause",
+        "## Acceptance Criteria",
     ],
     "test": ["## Objective", "## Test Plan", "## Expected Results", "## Acceptance Criteria"],
 }
 
+# Maps non-standard headings the user might write to the canonical required heading.
+_HEADING_ALIASES: dict[str, str] = {
+    "## Problem": "## Bug",
+    "## Summary": "## Bug",
+    "## Description": "## Bug",
+    "## Root cause": "## Root Cause",
+}
+
 
 def _ensure_template_compliance(description: str | None, ticket_type: str) -> str:
-    """Wrap free-form descriptions into required template sections for the ticket type.
+    """Normalise a description to include all required template sections.
 
-    If the description already contains ## headings it is returned unchanged.
-    Otherwise the content is placed under ## Objective and any remaining
-    required sections are appended as empty stubs.
+    If the description has no ##-level headings the content is placed under the
+    first required section and remaining sections are appended as empty stubs.
+    If it already has some ## headings, non-standard headings are mapped via
+    _HEADING_ALIASES and any still-missing required sections are appended
+    as empty stubs so the server-side DOC-013 validation passes.
     """
     if not description:
         return description or ""
     required = _TEMPLATE_SECTIONS.get(ticket_type)
     if not required:
         return description
-    if re.search(r"^## ", description, re.MULTILINE):
+
+    # Remap common non-standard headings to canonical names.
+    for alias, canonical in _HEADING_ALIASES.items():
+        description = description.replace(alias, canonical)
+
+    existing_headings = set(re.findall(r"^(#{1,6} .+)$", description, re.MULTILINE))
+    if not any(h in existing_headings for h in required):
+        # No recognised headings at all — wrap content under first required section.
+        parts = [f"{required[0]}\n\n{description.strip()}"]
+        for section in required[1:]:
+            parts.append(f"\n\n{section}\n\n")
+        return "".join(parts)
+
+    missing = [h for h in required if h not in existing_headings]
+    if not missing:
         return description
-    parts = [f"{required[0]}\n\n{description.strip()}"]
-    for section in required[1:]:
+
+    parts = [description.rstrip()]
+    for section in missing:
         parts.append(f"\n\n{section}\n\n")
     return "".join(parts)
 
