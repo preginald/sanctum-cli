@@ -77,6 +77,57 @@ def _print_template_validation_help(result: dict) -> None:
     print_error("\n".join(lines))
 
 
+def _handle_resolve_error(
+    ctx: click.Context, ticket_id: int, update_result: dict, body: str, comment_id: str | None
+) -> None:
+    detail = update_result.get("detail", {})
+    if isinstance(detail, str):
+        detail = {"detail": detail}
+    error_code = detail.get("error_code", "")
+    project_id = detail.get("project_id", "")
+    project_name = detail.get("project_name", "")
+
+    if error_code == "project_budget_required" and project_id:
+        label = project_name or project_id
+        click.echo(f"\n  Project '{label}' has no market_value set.")
+        click.echo("  Set a nominal budget to allow ticket resolution.")
+        if ctx.obj.get("yes") or click.confirm("  Set market_value to 1000?", default=True):
+            from sanctum_client.client import put as _project_put
+
+            budget_result = _project_put(
+                f"/projects/{project_id}",
+                json={"market_value": "1000.00"},
+            )
+            if isinstance(budget_result, dict) and budget_result.get("error"):
+                print_error(f"Failed to set project budget: {budget_result}")
+                print_error(
+                    "Set it manually via: sanctum projects update <project> --market-value 1000"
+                )
+                return
+            print_success(f"Set market_value=1000 on project '{label}'")
+            if comment_id:
+                retry = _project_put(
+                    f"/tickets/{ticket_id}",
+                    json={"status": "resolved", "resolution_comment_id": comment_id},
+                )
+                if isinstance(retry, dict) and not retry.get("error"):
+                    print_success(
+                        f"Ticket #{ticket_id} resolved (auto-retried after setting budget)"
+                    )
+                    return
+                print_error(f"Auto-retry failed: {retry}")
+        print_error(
+            "Set the budget and retry:\n"
+            f"  sanctum projects update {project_id} --market-value 1000\n"
+            f'  sanctum tickets resolve {ticket_id} -b "{body}"'
+        )
+    else:
+        print_error(
+            "To retry, fix the issue above and run:\n"
+            f'  sanctum tickets resolve {ticket_id} -b "{body}"'
+        )
+
+
 def _check_status_change(ticket_id: int, before: dict) -> None:
     if not isinstance(before, dict) or before.get("error"):
         return
@@ -547,7 +598,11 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
         if ctx.obj.get("output_json"):
             print_json({"comment": result, "status_update": update_result})
         else:
-            print_error(f"Comment created but status update failed: {update_result}")
+            print_error(
+                "Comment created but status update failed. "
+                f"Reason: {update_result.get('detail', {}).get('detail', update_result)}"
+            )
+            _handle_resolve_error(ctx, ticket_id, update_result, body, comment_id)
         return
 
     if ctx.obj.get("output_json"):
