@@ -39,19 +39,21 @@ def recovery_stats(ctx: click.Context, period: str) -> None:
         return
 
     if ctx.obj.get("output_json"):
-        print_json({
-            "period": period,
-            "status": "simulated",
-            "message": "Observability persistence layer required for live metrics. Showing CLI-level recovery patterns.",
-            "patterns_available": [
-                "missing_template_sections",
-                "billable_item_gate",
-                "minimum_increment",
-                "status_transition",
-                "invalid_choice",
-                "generic_422",
-            ],
-        })
+        print_json(
+            {
+                "period": period,
+                "status": "simulated",
+                "message": "Observability persistence layer required for live metrics. Showing CLI-level recovery patterns.",
+                "patterns_available": [
+                    "missing_template_sections",
+                    "billable_item_gate",
+                    "minimum_increment",
+                    "status_transition",
+                    "invalid_choice",
+                    "generic_422",
+                ],
+            }
+        )
         return
 
     click.echo()
@@ -102,30 +104,34 @@ def prompt_insights(ctx: click.Context, period: str, min_confidence: float) -> N
         return
 
     if ctx.obj.get("output_json"):
-        print_json({
-            "period": period,
-            "min_confidence": min_confidence,
-            "status": "simulated",
-            "message": "Observability persistence layer required for log-based analysis.",
-            "candidates": [
-                {
-                    "type": "parameter_alias",
-                    "suggestion": "Add 'topic' -> 'subject' alias to _PARAM_ALIASES",
-                    "confidence": 0.85,
-                    "evidence": "Observed 'topic' in failed CLI interpretations",
-                },
-                {
-                    "type": "negative_example",
-                    "suggestion": "Add WRONG/CORRECT example for 'summary' vs 'subject'",
-                    "confidence": 0.82,
-                    "evidence": "LLM occasionally produces 'summary' instead of 'subject'",
-                },
-            ],
-        })
+        print_json(
+            {
+                "period": period,
+                "min_confidence": min_confidence,
+                "status": "simulated",
+                "message": "Observability persistence layer required for log-based analysis.",
+                "candidates": [
+                    {
+                        "type": "parameter_alias",
+                        "suggestion": "Add 'topic' -> 'subject' alias to _PARAM_ALIASES",
+                        "confidence": 0.85,
+                        "evidence": "Observed 'topic' in failed CLI interpretations",
+                    },
+                    {
+                        "type": "negative_example",
+                        "suggestion": "Add WRONG/CORRECT example for 'summary' vs 'subject'",
+                        "confidence": 0.82,
+                        "evidence": "LLM occasionally produces 'summary' instead of 'subject'",
+                    },
+                ],
+            }
+        )
         return
 
     click.echo()
-    click.echo(f"  Prompt Improvement Insights (period: {period}, min_confidence: {min_confidence})")
+    click.echo(
+        f"  Prompt Improvement Insights (period: {period}, min_confidence: {min_confidence})"
+    )
     click.echo()
     click.echo("  Suggested improvements:")
     click.echo()
