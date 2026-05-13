@@ -134,6 +134,7 @@ from sanctum_cli.domains.invoices import invoices
 from sanctum_cli.domains.milestones import milestones
 from sanctum_cli.domains.mockups import mockups
 from sanctum_cli.domains.notify import notify
+from sanctum_cli.domains.observability import observability
 from sanctum_cli.domains.products import products
 from sanctum_cli.domains.projects import projects
 from sanctum_cli.domains.rate_cards import rate_cards
@@ -162,6 +163,7 @@ main.add_command(notify)
 main.add_command(mockups)
 main.add_command(assist)
 main.add_command(forms)
+main.add_command(observability)
 
 
 if __name__ == "__main__":

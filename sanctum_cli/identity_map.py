@@ -98,6 +98,9 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "contacts.set-password": "surgeon",
     "contacts.update": "surgeon",
     "contacts.provision-cms-sso": "surgeon",
+    # observability
+    "observability.recovery-stats": None,
+    "observability.prompt-insights": None,
     # flow
     "flow.list": None,
     "flow.show": None,
