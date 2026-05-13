@@ -658,12 +658,12 @@ def _explain_minimum_increment(failed_command: str, error_output: str) -> Assist
             return AssistExplanation(
                 status="assist_suggestion",
                 error_class="minimum_increment",
-                inferred_intent="Extend the time entry end time to meet the minimum 15-minute increment.",
+                inferred_intent="Extend the time entry to meet the minimum 15-minute increment.",
                 generated_command=_format_command(corrected),
                 risk="write",
                 confidence=0.9,
                 needs_confirmation=True,
-                message=f"Time entry must be at least 15 minutes. Extended end time to {dt.isoformat()}.",
+                message=f"Time entry min 15 minutes. Extended end to {dt.isoformat()}.",
             )
         except (ValueError, TypeError):
             pass
