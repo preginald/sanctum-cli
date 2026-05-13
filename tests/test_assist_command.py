@@ -4,12 +4,27 @@ Phase 3: Verify Router-backed intent interpretation, plan validation,
 safety classification, and output formatting.
 """
 
+import base64
 import json
+import time
 
 from click.testing import CliRunner
 
 from sanctum_cli.cli import main
 from sanctum_cli.domains.assist_ import assist
+
+
+def _valid_jwt() -> str:
+    header = base64.urlsafe_b64encode(b'{"alg":"RS256"}').rstrip(b"=").decode()
+    payload = (
+        base64.urlsafe_b64encode(
+            json.dumps({"exp": int(time.time()) + 3600, "sub": "test"}).encode()
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    sig = base64.urlsafe_b64encode(b"fakesig").rstrip(b"=").decode()
+    return f"{header}.{payload}.{sig}"
 
 
 def _assist_obj(agent: str = "oracle", output_json: bool = False) -> dict:
@@ -22,7 +37,7 @@ def _assist_obj(agent: str = "oracle", output_json: bool = False) -> dict:
 
 
 def test_assist_json_output_with_valid_read_plan(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -69,7 +84,7 @@ def test_assist_json_output_with_valid_read_plan(httpx_mock, monkeypatch, temp_h
 
 
 def test_assist_text_output_with_read_plan(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -112,6 +127,10 @@ def test_assist_text_output_with_read_plan(httpx_mock, monkeypatch, temp_home):
 def test_assist_requires_router_token(monkeypatch, temp_home):
     monkeypatch.delenv("SANCTUM_ROUTER_TOKEN", raising=False)
     monkeypatch.delenv("SANCTUM_ROUTER_JWT", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_ID", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_SECRET", raising=False)
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -129,6 +148,10 @@ def test_assist_requires_router_token(monkeypatch, temp_home):
 def test_assist_json_router_token_missing(monkeypatch, temp_home):
     monkeypatch.delenv("SANCTUM_ROUTER_TOKEN", raising=False)
     monkeypatch.delenv("SANCTUM_ROUTER_JWT", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_ID", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_SECRET", raising=False)
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -145,7 +168,7 @@ def test_assist_json_router_token_missing(monkeypatch, temp_home):
 
 
 def test_assist_handles_router_http_error(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -168,7 +191,7 @@ def test_assist_handles_router_http_error(httpx_mock, monkeypatch, temp_home):
 
 
 def test_assist_json_router_http_error(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -191,7 +214,7 @@ def test_assist_json_router_http_error(httpx_mock, monkeypatch, temp_home):
 
 
 def test_assist_shows_safety_notes_for_write_plan(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -231,7 +254,7 @@ def test_assist_shows_safety_notes_for_write_plan(httpx_mock, monkeypatch, temp_
 
 
 def test_assist_json_safety_checks_for_write(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -275,7 +298,7 @@ def test_assist_json_safety_checks_for_write(httpx_mock, monkeypatch, temp_home)
 
 
 def test_assist_shows_validation_errors(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -313,7 +336,7 @@ def test_assist_shows_validation_errors(httpx_mock, monkeypatch, temp_home):
 
 
 def test_assist_json_validation_errors(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -352,7 +375,7 @@ def test_assist_json_validation_errors(httpx_mock, monkeypatch, temp_home):
 
 
 def test_assist_empty_plan_shows_no_operations(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -385,7 +408,7 @@ def test_assist_empty_plan_shows_no_operations(httpx_mock, monkeypatch, temp_hom
 
 
 def test_assist_env_token_not_set_uses_default_url(httpx_mock, monkeypatch, temp_home):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 
@@ -427,7 +450,7 @@ def test_assist_multistep_read_plan_with_safety_classification(
     monkeypatch,
     temp_home,
 ):
-    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", "test-router-jwt")
+    monkeypatch.setenv("SANCTUM_ROUTER_TOKEN", _valid_jwt())
     monkeypatch.setenv("SANCTUM_API_TOKEN", "sntm_test_token_12345")
     monkeypatch.setenv("SANCTUM_API_BASE", "http://localhost:8000")
 

@@ -130,9 +130,14 @@ def test_get_router_client_returns_client_when_token_set(monkeypatch):
     assert client.token == "test-token"
 
 
-def test_get_router_client_returns_none_when_no_token(monkeypatch):
+def test_get_router_client_returns_none_when_no_token(monkeypatch, tmp_path):
     monkeypatch.delenv("SANCTUM_ROUTER_TOKEN", raising=False)
     monkeypatch.delenv("SANCTUM_ROUTER_JWT", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_ID", raising=False)
+    monkeypatch.delenv("SANCTUM_ROUTER_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_ID", raising=False)
+    monkeypatch.delenv("OIDC_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr("sanctum_cli.token_provider.CACHE_FILE", tmp_path / "no-cache-file")
     client = get_router_client()
     assert client is None
 

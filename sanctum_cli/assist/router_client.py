@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -11,6 +12,14 @@ import click
 import httpx
 
 from sanctum_cli.assist.schema import build_cli_schema
+from sanctum_cli.token_provider import (
+    TokenExpiredError,
+    TokenProvider,
+    TokenUnavailableError,
+    has_router_token_source,
+)
+
+log = logging.getLogger(__name__)
 
 RouterInterpretMode = Literal["error_repair", "natural_language", "validate"]
 
@@ -166,6 +175,7 @@ class RouterClient:
         *,
         base_url: str | None = None,
         token: str | None = None,
+        token_provider: TokenProvider | None = None,
         timeout: float = 90.0,
     ) -> None:
         self.base_url = (base_url or os.getenv("SANCTUM_ROUTER_URL") or DEFAULT_ROUTER_URL).rstrip(
@@ -176,25 +186,57 @@ class RouterClient:
             if token is not None
             else os.getenv("SANCTUM_ROUTER_TOKEN") or os.getenv("SANCTUM_ROUTER_JWT")
         )
+        self.token_provider = token_provider
         self.timeout = timeout
+
+    def _get_authorization_header(self) -> dict[str, str]:
+        """Resolve the current bearer token, preflighting expiry if a provider is available."""
+        if self.token_provider:
+            try:
+                token = self.token_provider.get_token()
+            except (TokenUnavailableError, TokenExpiredError) as exc:
+                raise RouterClientError(str(exc)) from exc
+            return {"Authorization": f"Bearer {token}"}
+        if self.token:
+            return {"Authorization": f"Bearer {self.token}"}
+        raise RouterClientError("SANCTUM_ROUTER_TOKEN is required for Router CLI interpretation")
 
     def interpret(self, request: RouterInterpretRequest) -> RouterInterpretResponse:
         """Send an interpretation request to Router and validate the response shape."""
 
-        if not self.token:
-            raise RouterClientError(
-                "SANCTUM_ROUTER_TOKEN is required for Router CLI interpretation"
-            )
+        headers = self._get_authorization_header()
 
         try:
             response = httpx.post(
                 f"{self.base_url}{CLI_INTERPRET_PATH}",
                 json=request.to_dict(),
-                headers={"Authorization": f"Bearer {self.token}"},
+                headers=headers,
                 timeout=self.timeout,
             )
         except httpx.HTTPError as exc:
             raise RouterClientError(f"Router interpretation request failed: {exc}") from exc
+
+        if response.status_code == 401 and self.token_provider:
+            log.info("Router returned 401, forcing token refresh and retrying once...")
+            try:
+                new_token = self.token_provider.force_refresh()
+            except (TokenUnavailableError, RuntimeError) as exc:
+                raise RouterClientError(
+                    f"Router request failed with HTTP 401 and token refresh failed: {exc}",
+                    status_code=401,
+                ) from exc
+            headers = {"Authorization": f"Bearer {new_token}"}
+            try:
+                response = httpx.post(
+                    f"{self.base_url}{CLI_INTERPRET_PATH}",
+                    json=request.to_dict(),
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+            except httpx.HTTPError as exc:
+                raise RouterClientError(
+                    f"Router interpretation request failed after token refresh: {exc}"
+                ) from exc
 
         if response.status_code >= 400:
             detail = ""
@@ -283,8 +325,14 @@ class RouterClient:
 
 
 def get_router_client() -> RouterClient | None:
-    """Return a RouterClient if a Router token is configured, else None."""
-    token = os.getenv("SANCTUM_ROUTER_TOKEN") or os.getenv("SANCTUM_ROUTER_JWT")
-    if not token:
+    """Return a RouterClient if any token source exists, else None.
+
+    Supports explicit env var, cached tokens, and OIDC client_credentials.
+    """
+    if not has_router_token_source():
         return None
-    return RouterClient(token=token)
+    explicit = os.getenv("SANCTUM_ROUTER_TOKEN") or os.getenv("SANCTUM_ROUTER_JWT")
+    from sanctum_cli.token_provider import RouterTokenProvider
+
+    provider = RouterTokenProvider(explicit_token=explicit)
+    return RouterClient(token_provider=provider, token=explicit)

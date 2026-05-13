@@ -6,6 +6,24 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _mock_oidc_env_path(monkeypatch, tmp_path):
+    """Prevent real ~/Dev/sanctum-router/.env from interfering with tests."""
+    monkeypatch.setattr(
+        "sanctum_cli.token_provider._OIDC_ENV_PATH",
+        tmp_path / "no-such-env-file",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cache_file(monkeypatch, tmp_path):
+    """Redirect CACHE_FILE to a temp path so real ~/.sanctum doesn't interfere."""
+    monkeypatch.setattr(
+        "sanctum_cli.token_provider.CACHE_FILE",
+        tmp_path / "no-cache-file",
+    )
+
+
 @pytest.fixture
 def temp_home(monkeypatch):
     """Redirect ~/.sanctum to a temp directory."""
