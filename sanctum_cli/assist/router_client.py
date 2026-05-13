@@ -12,7 +12,7 @@ import httpx
 
 from sanctum_cli.assist.schema import build_cli_schema
 
-RouterInterpretMode = Literal["error_repair", "natural_language"]
+RouterInterpretMode = Literal["error_repair", "natural_language", "validate"]
 
 
 DEFAULT_ROUTER_URL = "https://router.digitalsanctum.com.au"
@@ -128,6 +128,8 @@ def build_router_interpret_request(
         raise ValueError("error_repair mode requires failed_command and error_output")
     if mode == "natural_language" and not intent:
         raise ValueError("natural_language mode requires intent")
+    if mode == "validate" and not intent and not failed_command:
+        raise ValueError("validate mode requires intent or failed_command")
 
     schema_digest: str | None = None
     available_domains: tuple[str, ...] = ()
@@ -159,7 +161,7 @@ class RouterClient:
         *,
         base_url: str | None = None,
         token: str | None = None,
-        timeout: float = 30.0,
+        timeout: float = 90.0,
     ) -> None:
         self.base_url = (base_url or os.getenv("SANCTUM_ROUTER_URL") or DEFAULT_ROUTER_URL).rstrip(
             "/"
@@ -238,6 +240,29 @@ class RouterClient:
             calling_agent=calling_agent,
             root=root,
             sanitized_context=sanitized_context,
+        )
+        return self.interpret(request)
+
+    def interpret_validate(
+        self,
+        *,
+        domain: str,
+        action: str,
+        params: dict[str, Any],
+        calling_agent: str,
+    ) -> RouterInterpretResponse:
+        """ "Send parsed command arguments to Router validate mode."""
+
+        failed_command = f"sanctum --agent {calling_agent} {domain} {action}"
+        for key, value in params.items():
+            flag = "--" + key.replace("_", "-")
+            failed_command += f" {flag} {value}"
+
+        request = build_router_interpret_request(
+            mode="validate",
+            failed_command=failed_command,
+            intent=failed_command,
+            calling_agent=calling_agent,
         )
         return self.interpret(request)
 
