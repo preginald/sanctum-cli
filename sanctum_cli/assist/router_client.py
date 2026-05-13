@@ -197,10 +197,20 @@ class RouterClient:
             raise RouterClientError(f"Router interpretation request failed: {exc}") from exc
 
         if response.status_code >= 400:
-            raise RouterClientError(
-                f"Router interpretation failed with HTTP {response.status_code}",
-                status_code=response.status_code,
-            )
+            detail = ""
+            try:
+                body = response.json()
+                err = body.get("error", body.get("detail", {}))
+                if isinstance(err, dict):
+                    detail = err.get("message", "") or err.get("detail", "")
+                elif isinstance(err, str):
+                    detail = err
+            except Exception:
+                pass
+            msg = f"Router interpretation failed with HTTP {response.status_code}"
+            if detail:
+                msg += f": {detail}"
+            raise RouterClientError(msg, status_code=response.status_code)
 
         try:
             payload = response.json()
