@@ -71,10 +71,9 @@ def test_explain_error_reports_invalid_choice_options():
         root=main,
     )
 
-    assert explanation.status == "assist_missing_fields"
+    assert explanation.status == "assist_suggestion"
     assert explanation.error_class == "invalid_choice"
-    assert explanation.missing_fields == ("--status",)
-    assert "new, open" in explanation.message
+    assert "open" in explanation.message
 
 
 def test_explain_error_adds_default_agent_for_known_domain():

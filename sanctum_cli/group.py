@@ -127,26 +127,46 @@ class HelpfulGroup(click.Group):
                         params[key] = value
             ctx.params.update(corrected)
 
+    def _recover_from_error(
+        self, ctx: click.Context, failed_command: str, error_output: str
+    ) -> None:
+        if _raw_mode(ctx) or not _assist_enabled(ctx):
+            return
+        explanation = explain_error(
+            failed_command,
+            error_output,
+            calling_agent=ctx.find_root().obj.get("resolved_agent"),
+            router=get_router_client(),
+        )
+        if explanation.status == "assist_suggestion" and explanation.generated_command:
+            if ctx.find_root().obj.get("output_json"):
+                print_json(explanation.to_dict())
+            else:
+                click.echo(render_explanation_text(explanation))
+            raise click.exceptions.Exit(1)
+        elif explanation.status == "assist_missing_fields":
+            click.echo(render_explanation_text(explanation))
+            raise click.exceptions.Exit(1)
+
     def invoke(self, ctx: click.Context) -> object:
         self._run_pre_flight_validation(ctx)
         try:
-            return super().invoke(ctx)
+            result = super().invoke(ctx)
+            if isinstance(result, dict) and "error" in result:
+                err_detail = result.get("detail", {})
+                if isinstance(err_detail, dict) and err_detail.get("detail"):
+                    failed = _failed_command(ctx, None)
+                    self._recover_from_error(ctx, failed, str(err_detail["detail"]))
+            return result
         except click.NoSuchOption as e:
             if _raw_mode(ctx):
                 raise
 
             if _assist_enabled(ctx):
                 failed_command = _failed_command(ctx, e.option_name)
-                explanation = explain_error(
-                    failed_command,
-                    f"Error: No such option: {e.option_name}",
-                    calling_agent=ctx.find_root().obj.get("resolved_agent"),
-                    router=get_router_client(),
+                self._recover_from_error(
+                    ctx, failed_command, f"Error: No such option: {e.option_name}"
                 )
-                if ctx.find_root().obj.get("output_json"):
-                    print_json(explanation.to_dict())
-                else:
-                    click.echo(render_explanation_text(explanation))
                 raise click.exceptions.Exit(1) from e
 
             hint = _GLOBAL_FLAGS.get(e.option_name)
@@ -159,6 +179,22 @@ class HelpfulGroup(click.Group):
                     f"\n"
                     f"  Correct:  {hint}"
                 ) from e
+            raise
+        except click.UsageError as e:
+            if _raw_mode(ctx):
+                raise
+            if _assist_enabled(ctx):
+                failed_command = _failed_command(ctx, None)
+                self._recover_from_error(ctx, failed_command, e.format_message())
+                raise click.exceptions.Exit(1) from e
+            raise
+        except click.BadParameter as e:
+            if _raw_mode(ctx):
+                raise
+            if _assist_enabled(ctx):
+                failed_command = _failed_command(ctx, e.param.name if e.param else None)
+                self._recover_from_error(ctx, failed_command, e.format_message())
+                raise click.exceptions.Exit(1) from e
             raise
 
 

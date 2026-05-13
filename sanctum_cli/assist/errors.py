@@ -202,8 +202,13 @@ def explain_error(
         or _explain_content_flag(tokens, parsed, error_output)
         or _explain_time_entry_positionals(tokens, parsed)
         or _explain_unexpected_extra_argument(tokens, parsed)
-        or _explain_invalid_choice(parsed)
+        or _explain_invalid_choice(parsed, tokens)
         or _explain_invalid_argument(parsed)
+        or _explain_missing_template_sections(error_output)
+        or _explain_billable_item_gate(failed_command, error_output)
+        or _explain_minimum_increment(failed_command, error_output)
+        or _explain_status_transition(failed_command, error_output)
+        or _explain_api_422_generic(error_output)
         or _unsupported(error_output)
     )
     if explanation.status == "assist_unsupported" and router is not None and calling_agent:
@@ -493,10 +498,50 @@ def _explain_unexpected_extra_argument(
     )
 
 
-def _explain_invalid_choice(parsed: ParsedCliError) -> AssistExplanation | None:
+def _closest_choice(value: str, choices: tuple[str, ...]) -> str | None:
+    value_lower = value.lower()
+    for c in choices:
+        if c.lower() == value_lower:
+            return c
+    for c in choices:
+        if c.lower().startswith(value_lower) or value_lower.startswith(c.lower()):
+            return c
+    for c in choices:
+        if len(set(value_lower) & set(c.lower())) / max(len(value_lower), len(c.lower()), 1) > 0.6:
+            return c
+    return None
+
+
+def _explain_invalid_choice(
+    parsed: ParsedCliError, tokens: list[str] | None = None
+) -> AssistExplanation | None:
     if parsed.error_class != "invalid_choice" or not parsed.option:
         return None
     choices = ", ".join(parsed.choices) if parsed.choices else "the listed choices"
+    generated: str | None = None
+    suggestion: str | None = None
+    if parsed.choices and tokens and parsed.option in tokens:
+        idx = tokens.index(parsed.option)
+        if idx + 1 < len(tokens):
+            bad_value = tokens[idx + 1]
+            closest = _closest_choice(bad_value, parsed.choices)
+            if closest:
+                suggestion = closest
+                corrected = tokens[:]
+                corrected[idx + 1] = closest
+                generated = _format_command(corrected)
+    if generated:
+        return AssistExplanation(
+            status="assist_suggestion",
+            error_class="invalid_choice",
+            inferred_intent=f"Replace invalid value with closest valid choice '{suggestion}'.",
+            generated_command=generated,
+            risk="unknown",
+            confidence=0.88,
+            needs_confirmation=True,
+            message=f"{parsed.option} must be one of: {choices}. Closest match: {suggestion}.",
+            details={"parsed_error": parsed.to_dict()},
+        )
     return AssistExplanation(
         status="assist_missing_fields",
         error_class="invalid_choice",
@@ -528,6 +573,144 @@ def _explain_invalid_argument(parsed: ParsedCliError) -> AssistExplanation | Non
         ),
         missing_fields=(parsed.argument,),
         details={"parsed_error": parsed.to_dict()},
+    )
+
+
+def _explain_missing_template_sections(error_output: str) -> AssistExplanation | None:
+    if (
+        "missing_sections" not in error_output
+        and "missing required sections" not in error_output.lower()
+    ):
+        return None
+    return AssistExplanation(
+        status="assist_suggestion",
+        error_class="missing_template_sections",
+        inferred_intent="Add missing template sections to the ticket description.",
+        generated_command=None,
+        risk="write",
+        confidence=0.92,
+        needs_confirmation=True,
+        message="The ticket template requires additional sections. Append the missing headers "
+        "to the --description value and retry.",
+    )
+
+
+def _explain_billable_item_gate(failed_command: str, error_output: str) -> AssistExplanation | None:
+    if "billable_item_required" not in error_output and "billable" not in error_output.lower():
+        return None
+    tokens = _command_tokens(failed_command)
+    ticket_id: str | None = None
+    for i, token in enumerate(tokens):
+        if token in ("--ticket-id", "-t") and i + 1 < len(tokens):
+            ticket_id = tokens[i + 1]
+            break
+        if token.isdigit():
+            ticket_id = token
+    if not ticket_id:
+        return AssistExplanation(
+            status="assist_missing_fields",
+            error_class="billable_item_gate",
+            inferred_intent="Add a time entry to satisfy the billable item requirement.",
+            generated_command=None,
+            risk="write",
+            confidence=0.9,
+            needs_confirmation=True,
+            message="This ticket requires a time entry or material before resolution. "
+            "Use 'sanctum time-entries create -t <id> -s <start> -e <end> -d \"<description>\"'.",
+        )
+    return AssistExplanation(
+        status="assist_suggestion",
+        error_class="billable_item_gate",
+        inferred_intent=f"Create a 15-minute time entry on ticket {ticket_id} to pass the gate.",
+        generated_command=(
+            f"sanctum time-entries create -t {ticket_id} "
+            "-s $(date -u +%Y-%m-%dT%H:%M:%S) "
+            "-e $(date -u -d '+15 minutes' +%Y-%m-%dT%H:%M:%S) "
+            '-d "Auto-created time entry for billable item gate"'
+        ),
+        risk="write",
+        confidence=0.93,
+        needs_confirmation=True,
+        message=f"Ticket #{ticket_id} needs a time entry or material before resolution.",
+    )
+
+
+def _explain_minimum_increment(failed_command: str, error_output: str) -> AssistExplanation | None:
+    if "minimum_increment" not in error_output and "minimum" not in error_output.lower():
+        return None
+    tokens = _command_tokens(failed_command)
+    end_val: str | None = None
+    for i, token in enumerate(tokens):
+        if token in ("--end", "-e") and i + 1 < len(tokens):
+            end_val = tokens[i + 1]
+            break
+    if end_val:
+        import datetime
+
+        try:
+            dt = datetime.datetime.fromisoformat(end_val)
+            dt += datetime.timedelta(minutes=15)
+            corrected = tokens[:]
+            for i, token in enumerate(tokens):
+                if token in ("--end", "-e") and i + 1 < len(tokens):
+                    corrected[i + 1] = dt.isoformat()
+                    break
+            return AssistExplanation(
+                status="assist_suggestion",
+                error_class="minimum_increment",
+                inferred_intent="Extend the time entry end time to meet the minimum 15-minute increment.",
+                generated_command=_format_command(corrected),
+                risk="write",
+                confidence=0.9,
+                needs_confirmation=True,
+                message=f"Time entry must be at least 15 minutes. Extended end time to {dt.isoformat()}.",
+            )
+        except (ValueError, TypeError):
+            pass
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="minimum_increment",
+        inferred_intent="Adjust time entry duration to meet the minimum increment.",
+        generated_command=None,
+        risk="write",
+        confidence=0.85,
+        needs_confirmation=True,
+        message="Time entries require a minimum 15-minute duration. Extend the --end time.",
+    )
+
+
+def _explain_status_transition(failed_command: str, error_output: str) -> AssistExplanation | None:
+    if (
+        "invalid transition" not in error_output.lower()
+        and "cannot transition" not in error_output.lower()
+    ):
+        return None
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="invalid_status_transition",
+        inferred_intent="Use a valid status transition path.",
+        generated_command=None,
+        risk="write",
+        confidence=0.87,
+        needs_confirmation=True,
+        message="The requested status transition is not allowed. Check available_transitions "
+        "on the ticket, milestone, or project and use a valid intermediate status.",
+    )
+
+
+def _explain_api_422_generic(error_output: str) -> AssistExplanation | None:
+    if "422" not in error_output and "unprocessable" not in error_output.lower():
+        return None
+    return AssistExplanation(
+        status="assist_missing_fields",
+        error_class="api_422_error",
+        inferred_intent="Fix the validation error in the API request.",
+        generated_command=None,
+        risk="write",
+        confidence=0.7,
+        needs_confirmation=True,
+        message=f"API validation error: {error_output.strip()[:200]}. "
+        "Check required fields and value types before retrying.",
     )
 
 
