@@ -9,6 +9,7 @@ from typing import Any
 
 import click
 
+from sanctum_cli.assist.events import RecoveryEvent, record_event
 from sanctum_cli.assist.router_client import (
     RouterClient,
     RouterClientError,
@@ -224,8 +225,12 @@ def explain_error(
             pass
     if root is not None and explanation.generated_command:
         validation = _validate_command(root, explanation.generated_command)
-        return AssistExplanation(**{**explanation.to_dict(), "validation": validation})
-    return explanation
+        result = AssistExplanation(**{**explanation.to_dict(), "validation": validation})
+    else:
+        result = explanation
+
+    _record_recovery_event(result, calling_agent, tokens)
+    return result
 
 
 def render_explanation_text(explanation: AssistExplanation) -> str:
@@ -249,6 +254,40 @@ def render_explanation_text(explanation: AssistExplanation) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _record_recovery_event(
+    explanation: AssistExplanation, calling_agent: str | None, tokens: list[str]
+) -> None:
+    import contextlib
+
+    domain: str | None = None
+    action: str | None = None
+    for _i, token in enumerate(tokens):
+        if token in ("--agent", "-a", "--user", "-u", "--env", "-e"):
+            continue
+        if token.startswith("-"):
+            continue
+        if domain is None:
+            domain = token
+        elif action is None:
+            action = token
+            break
+    with contextlib.suppress(Exception):
+        record_event(
+            RecoveryEvent(
+                pattern=explanation.error_class,
+                error_class=explanation.error_class,
+                inferred_intent=explanation.inferred_intent,
+                risk=explanation.risk,
+                confidence=explanation.confidence,
+                generated_command=explanation.generated_command,
+                status=explanation.status,
+                calling_agent=calling_agent,
+                domain=domain,
+                action=action,
+            )
+        )
 
 
 def _command_tokens(command: str) -> list[str]:
@@ -580,8 +619,28 @@ def _explain_missing_template_sections(error_output: str) -> AssistExplanation |
     if (
         "missing_sections" not in error_output
         and "missing required sections" not in error_output.lower()
+        and "missing section" not in error_output.lower()
     ):
         return None
+
+    sections = _extract_missing_sections(error_output)
+    if sections:
+        section_list = "\n".join(f"    - {s}" for s in sections)
+        return AssistExplanation(
+            status="assist_suggestion",
+            error_class="missing_template_sections",
+            inferred_intent=f"Add {len(sections)} missing template section(s) to the ticket.",
+            generated_command=None,
+            risk="write",
+            confidence=0.92,
+            needs_confirmation=True,
+            message=(
+                f"The ticket template requires {len(sections)} missing section(s):\n"
+                f"{section_list}\n\n"
+                "Append the missing headers to the --description value and retry."
+            ),
+        )
+
     return AssistExplanation(
         status="assist_suggestion",
         error_class="missing_template_sections",
@@ -593,6 +652,27 @@ def _explain_missing_template_sections(error_output: str) -> AssistExplanation |
         message="The ticket template requires additional sections. Append the missing headers "
         "to the --description value and retry.",
     )
+
+
+def _extract_missing_sections(error_output: str) -> list[str]:
+    """Extract all missing section names from a template validation error output."""
+    _found: set[str] = set()
+    patterns = [
+        r"Missing required section:\s*(.+)",
+        r"missing section:\s*(.+)",
+        r"section ['\"](.+?)['\"] (?:is required|not found|missing)",
+        r"'msg':\s*'Missing(?: required)? section:\s*(.+?)'",
+        r"'msg':\s*'missing section:\s*(.+?)'",
+        r"\"msg\":\s*\"Missing(?: required)? section:\s*(.+?)\"",
+        r"\"msg\":\s*\"missing section:\s*(.+?)\"",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, error_output, re.IGNORECASE):
+            section_name = match.group(1).strip().strip("'\"")
+            if section_name:
+                _found.add(section_name)
+
+    return sorted(_found)
 
 
 def _explain_billable_item_gate(failed_command: str, error_output: str) -> AssistExplanation | None:

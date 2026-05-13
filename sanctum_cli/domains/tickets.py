@@ -125,7 +125,7 @@ def _resolve_missing_account_id(ctx: click.Context) -> str:
 
 @tickets.command()
 @click.option("--subject", "-s", required=True, help="Ticket subject")
-@click.option("--account-id", "-a", default=None, help="Account UUID")
+@click.option("--account-id", "-a", default=None, help="Account UUID (required)")
 @click.option(
     "--project-id",
     "-p",

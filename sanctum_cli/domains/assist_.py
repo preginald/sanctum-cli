@@ -23,6 +23,7 @@ from sanctum_cli.assist.intent import (
 from sanctum_cli.assist.router_client import RouterClientError, get_router_client
 from sanctum_cli.assist.safety import check_operation
 from sanctum_cli.assist.schema import build_cli_schema
+from sanctum_cli.assist.session import Session, SessionStore, get_session_store
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json
 
@@ -65,12 +66,15 @@ def _get_root_group(ctx: click.Context) -> click.Group:
 
 @click.command()
 @click.argument("intent")
+@click.option("--session-id", default=None, help="Session ID for conversational context")
 @click.pass_context
-def assist(ctx: click.Context, intent: str) -> None:
+def assist(ctx: click.Context, intent: str, session_id: str | None) -> None:
     """Interpret a natural-language intent and produce a validated operation plan.
 
     Reads the CLI command schema, sends the intent to Sanctum Router for interpretation,
     validates the returned operation plan, and presents the results.
+
+    Use --session-id to continue a previous conversation with context recall.
 
     Examples:
 
@@ -81,6 +85,12 @@ def assist(ctx: click.Context, intent: str) -> None:
     check_command_identity("assist", "assist", ctx.obj.get("resolved_agent"))
     output_json = ctx.obj.get("output_json")
     calling_agent = ctx.obj.get("resolved_agent")
+    store = get_session_store()
+
+    session = _resolve_session(store, session_id, calling_agent)
+    if session is not None:
+        session.add_message("user", intent)
+        store.save(session)
 
     router = get_router_client()
     if router is None:
@@ -100,11 +110,15 @@ def assist(ctx: click.Context, intent: str) -> None:
     root = _get_root_group(ctx)
     schema = build_cli_schema(root)
 
+    context = session.recent_context(5) if session else None
+    sanitized_context = {"conversation_history": context} if context else {}
+
     try:
         response = router.interpret_intent(
             intent=intent,
             calling_agent=calling_agent or "unknown",
             root=root,
+            sanitized_context=sanitized_context,
         )
     except RouterClientError as exc:
         if output_json:
@@ -119,23 +133,30 @@ def assist(ctx: click.Context, intent: str) -> None:
 
     safety_checks = [check_operation(op.domain, op.action).to_dict() for op in plan.operations]
 
+    if session is not None:
+        session.add_message("assistant", response.message)
+        store.save(session)
+
     if output_json:
-        print_json(
-            {
-                "status": "validated" if validation.valid else "validation_failed",
-                "intent": intent,
-                "inferred_intent": response.inferred_intent,
-                "confidence": response.confidence,
-                "needs_confirmation": response.needs_confirmation,
-                "message": response.message,
-                "validation": validation.to_dict(),
-                "operations": [op.to_dict() for op in plan.operations],
-                "safety_checks": safety_checks,
-            }
-        )
+        output = {
+            "status": "validated" if validation.valid else "validation_failed",
+            "intent": intent,
+            "inferred_intent": response.inferred_intent,
+            "confidence": response.confidence,
+            "needs_confirmation": response.needs_confirmation,
+            "message": response.message,
+            "validation": validation.to_dict(),
+            "operations": [op.to_dict() for op in plan.operations],
+            "safety_checks": safety_checks,
+        }
+        if session:
+            output["session_id"] = session.session_id
+        print_json(output)
         return
 
     click.echo()
+    if session:
+        click.echo(f"  Session:  {session.session_id}")
     click.echo(f"  Intent:   {intent}")
     click.echo(f"  Inferred: {response.inferred_intent}")
     click.echo(f"  Confidence: {response.confidence:.0%}")
@@ -174,6 +195,21 @@ def assist(ctx: click.Context, intent: str) -> None:
             if s["rejected"]:
                 click.echo(f"      {s['reason']}")
         click.echo()
+
+
+def _resolve_session(
+    store: SessionStore, session_id: str | None, calling_agent: str | None
+) -> Session | None:
+    if session_id:
+        session = store.get(session_id)
+        if session:
+            return session
+        return None
+    if calling_agent:
+        recent = store.find_by_agent(calling_agent)
+        if recent:
+            return recent[0]
+    return None
 
 
 def natural_language_execute(ctx: click.Context, intent: str) -> None:

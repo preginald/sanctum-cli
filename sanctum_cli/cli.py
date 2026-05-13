@@ -139,6 +139,7 @@ from sanctum_cli.domains.products import products
 from sanctum_cli.domains.projects import projects
 from sanctum_cli.domains.rate_cards import rate_cards
 from sanctum_cli.domains.search_ import search
+from sanctum_cli.domains.sessions import sessions
 from sanctum_cli.domains.templates import templates
 from sanctum_cli.domains.tickets import tickets
 from sanctum_cli.domains.time_entries import time_entries
@@ -156,6 +157,7 @@ main.add_command(projects)
 main.add_command(templates)
 main.add_command(products)
 main.add_command(rate_cards)
+main.add_command(sessions)
 main.add_command(workbench)
 main.add_command(time_entries)
 main.add_command(artefacts)

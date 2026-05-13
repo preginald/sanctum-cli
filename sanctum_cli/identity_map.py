@@ -101,6 +101,12 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # observability
     "observability.recovery-stats": None,
     "observability.prompt-insights": None,
+    # sessions
+    "sessions.create": None,
+    "sessions.show": None,
+    "sessions.list": None,
+    "sessions.delete": None,
+    "sessions.clear-expired": None,
     # flow
     "flow.list": None,
     "flow.show": None,
