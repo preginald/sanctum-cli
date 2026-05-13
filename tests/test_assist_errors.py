@@ -268,6 +268,64 @@ def test_router_fallback_skipped_when_no_router_provided():
     assert explanation.error_class == "unsupported_error"
 
 
+def test_explain_error_schema_unknown_flag_matches_ticket_type():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create -t feature",
+        "Error: No such option: -t",
+        root=main,
+    )
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "schema_unknown_flag"
+    assert explanation.generated_command == (
+        "sanctum --agent surgeon tickets create --ticket-type feature"
+    )
+    assert explanation.confidence == 0.92
+    assert explanation.needs_confirmation is False
+    assert explanation.details["schema_match"]["matched_param"] == "--ticket-type"
+
+
+def test_explain_error_schema_unknown_flag_falls_through_when_no_match():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create -x nonexistent",
+        "Error: No such option: -x",
+        root=main,
+    )
+    assert explanation.status == "assist_unsupported"
+    assert explanation.error_class == "unsupported_error"
+
+
+def test_explain_error_schema_unknown_flag_skipped_when_click_suggests():
+    explain_error(
+        "sanctum --agent surgeon tickets show --project abc",
+        "Error: No such option: --project Did you mean '--project-id'?",
+        root=main,
+    )
+    # This should be handled by did_you_mean, not schema_unknown_flag
+
+
+def test_explain_error_schema_unknown_flag_prioritizes_did_you_mean():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets show --project abc",
+        "Error: No such option: --project Did you mean '--project-id'?",
+        root=main,
+    )
+    assert explanation.error_class == "did_you_mean_option"
+    assert explanation.generated_command == (
+        "sanctum --agent surgeon tickets show --project-id abc"
+    )
+
+
+def test_explain_error_schema_unknown_flag_handles_priority_choices():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create -q high",
+        "Error: No such option: -q",
+        root=main,
+    )
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "schema_unknown_flag"
+    assert "--priority" in explanation.generated_command
+
+
 def test_router_fallback_skipped_when_no_calling_agent(httpx_mock):
     """Router fallback requires calling_agent to build the operation plan command."""
     client = RouterClient(token="test-token")

@@ -61,6 +61,7 @@ class RouterInterpretRequest:
     cwd: str | None = None
     available_domains: tuple[str, ...] = ()
     schema_digest: str | None = None
+    cli_schema: dict[str, Any] | None = None
     sanitized_context: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -73,6 +74,7 @@ class RouterInterpretRequest:
             "cwd": self.cwd,
             "available_domains": list(self.available_domains),
             "schema_digest": self.schema_digest,
+            "cli_schema": self.cli_schema,
             "sanitized_context": self.sanitized_context,
         }
 
@@ -132,10 +134,12 @@ def build_router_interpret_request(
         raise ValueError("validate mode requires intent or failed_command")
 
     schema_digest: str | None = None
+    cli_schema: dict[str, Any] | None = None
     available_domains: tuple[str, ...] = ()
     if root is not None:
         schema = build_cli_schema(root)
         schema_digest = schema.digest
+        cli_schema = schema.to_dict()
         available_domains = tuple(
             sorted({command.path[0] for command in schema.commands if len(command.path) >= 1})
         )
@@ -149,6 +153,7 @@ def build_router_interpret_request(
         cwd=cwd or str(Path.cwd()),
         available_domains=available_domains,
         schema_digest=schema_digest,
+        cli_schema=cli_schema,
         sanitized_context=sanitized_context or {},
     )
 

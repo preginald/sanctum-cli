@@ -216,6 +216,7 @@ def explain_error(
     explanation = (
         _explain_global_flag(tokens, parsed)
         or _explain_did_you_mean(tokens, parsed)
+        or _explain_schema_unknown_flag(tokens, parsed, root)
         or _explain_singular_group(tokens, parsed)
         or _explain_missing_option(parsed)
         or _explain_missing_identity(tokens, error_output)
@@ -375,6 +376,73 @@ def _explain_global_flag(tokens: list[str], parsed: ParsedCliError) -> AssistExp
         message=f"Move {flag} before the command group.",
         details={"parsed_error": parsed.to_dict()},
     )
+
+
+def _explain_schema_unknown_flag(
+    tokens: list[str], parsed: ParsedCliError, root: click.Group | None
+) -> AssistExplanation | None:
+    if parsed.error_class != "no_such_option" or parsed.suggestion or not root:
+        return None
+
+    flag = parsed.option
+    if not flag or flag in GLOBAL_FLAGS or flag not in tokens:
+        return None
+
+    flag_idx = tokens.index(flag)
+    if flag_idx + 1 >= len(tokens):
+        return None
+
+    value = tokens[flag_idx + 1]
+    if value.startswith("-"):
+        return None
+
+    path = _command_path(tokens)
+    if len(path) < 2:
+        return None
+
+    domain, action = path[0], path[1]
+
+    schema = build_cli_schema(root)
+    target_cmd = None
+    for cmd in schema.commands:
+        if len(cmd.path) >= 2 and cmd.path[0] == domain and cmd.path[1] == action:
+            target_cmd = cmd
+            break
+
+    if not target_cmd:
+        return None
+
+    for param in target_cmd.parameters:
+        if value in param.choices:
+            long_flag = param.opts[0] if param.opts else f"--{param.name}"
+            corrected = list(tokens)
+            corrected[flag_idx] = long_flag
+            return AssistExplanation(
+                status="assist_suggestion",
+                error_class="schema_unknown_flag",
+                inferred_intent=(
+                    f"Replace {flag} with {long_flag} — "
+                    f"the value {value!r} is a valid choice for {long_flag}."
+                ),
+                generated_command=_format_command(corrected),
+                risk="unknown",
+                confidence=0.92,
+                needs_confirmation=False,
+                message=(
+                    f"Schema match: {flag} with value {value!r} matched parameter {long_flag}."
+                ),
+                details={
+                    "parsed_error": parsed.to_dict(),
+                    "schema_match": {
+                        "command": f"{domain} {action}",
+                        "unknown_flag": flag,
+                        "value": value,
+                        "matched_param": long_flag,
+                    },
+                },
+            )
+
+    return None
 
 
 def _explain_did_you_mean(tokens: list[str], parsed: ParsedCliError) -> AssistExplanation | None:

@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import click
+from click._utils import Sentinel
 
 from sanctum_cli.identity_map import suggest_agent_for
 
@@ -104,6 +105,8 @@ def _parameter_schema(param: click.Parameter) -> ParameterSchema:
         secondary_opts = tuple(param.secondary_opts)
         is_flag = bool(param.is_flag)
 
+    default = None if isinstance(param.default, Sentinel) else param.default
+
     return ParameterSchema(
         name=param.name or "",
         kind="option" if isinstance(param, click.Option) else "argument",
@@ -112,7 +115,7 @@ def _parameter_schema(param: click.Parameter) -> ParameterSchema:
         opts=opts,
         secondary_opts=secondary_opts,
         choices=choices,
-        default=param.default,
+        default=default,
         is_flag=is_flag,
         multiple=bool(param.multiple),
         nargs=param.nargs,

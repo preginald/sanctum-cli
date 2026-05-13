@@ -28,7 +28,23 @@ def test_build_router_interpret_request_includes_schema_context():
     assert payload["cwd"] == "/tmp/work"
     assert "tickets" in payload["available_domains"]
     assert payload["schema_digest"].startswith("sha256:")
+    assert payload["cli_schema"] is not None
+    assert "commands" in payload["cli_schema"]
+    assert "global_options" in payload["cli_schema"]
     assert payload["sanitized_context"] == {"task_hint": "deliver ticket 3293"}
+
+
+def test_build_router_interpret_request_no_root_excludes_cli_schema():
+    request = build_router_interpret_request(
+        mode="error_repair",
+        failed_command="sanctum --agent surgeon tickets show --json 3293",
+        error_output="Error: No such option: --json",
+        calling_agent="surgeon",
+        root=None,
+    )
+    payload = request.to_dict()
+    assert payload["cli_schema"] is None
+    assert payload["schema_digest"] is None
 
 
 def test_build_router_interpret_request_validates_mode_payload():
