@@ -8,6 +8,7 @@ import click
 from sanctum_cli.assist.errors import explain_error, render_explanation_text
 from sanctum_cli.assist.router_client import get_router_client
 from sanctum_cli.display import print_json
+from sanctum_cli.domains.assist_ import natural_language_execute
 
 _GLOBAL_FLAGS: dict[str, str] = {
     "--json": "sanctum --json --agent surgeon <command>",
@@ -62,7 +63,11 @@ class HelpfulGroup(click.Group):
                     f"Did you mean:\n"
                     f"  {self.suggestions[cmd_name]}"
                 ) from None
-            raise
+            if _raw_mode(ctx):
+                raise
+            intent = " ".join(args)
+            natural_language_execute(ctx, intent)
+            raise click.exceptions.Exit(0) from None
 
     def invoke(self, ctx: click.Context) -> object:
         try:

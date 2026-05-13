@@ -7,11 +7,13 @@ and present the plan for review or execution.
 
 from __future__ import annotations
 
+import shlex
 import sys
 from typing import Any
 
 import click
 
+from sanctum_cli.assist.errors import explain_error, render_explanation_text
 from sanctum_cli.assist.intent import (
     OperationPlan,
     OperationStep,
@@ -172,6 +174,84 @@ def assist(ctx: click.Context, intent: str) -> None:
             if s["rejected"]:
                 click.echo(f"      {s['reason']}")
         click.echo()
+
+
+def natural_language_execute(ctx: click.Context, intent: str) -> None:
+    """Interpret natural language intent via Router and execute the operation plan."""
+    calling_agent = ctx.obj.get("resolved_agent")
+    root = _get_root_group(ctx)
+    schema = build_cli_schema(root)
+
+    router = get_router_client()
+    if router is None:
+        raise click.UsageError("SANCTUM_ROUTER_TOKEN required for natural language execution")
+
+    response = router.interpret_intent(
+        intent=intent,
+        calling_agent=calling_agent or "unknown",
+        root=root,
+    )
+
+    plan = _router_plan_to_operation_plan(intent, response)
+    validation = validate_operation_plan(plan, schema, calling_agent=calling_agent)
+    if not validation.valid:
+        errors = "; ".join(str(e) for e in validation.errors)
+        raise click.UsageError(f"Operation plan validation failed: {errors}")
+
+    for op in plan.operations:
+        safety = check_operation(op.domain, op.action)
+        if safety.rejected:
+            raise click.UsageError(f"Operation rejected: {op.domain} {op.action} — {safety.reason}")
+        if safety.needs_confirmation and not ctx.obj.get("yes"):
+            click.echo(f"Confirm: sanctum {op.domain} {op.action}? [y/N]: ", nl=False)
+            confirmed = click.getchar().lower() == "y"
+            click.echo()
+            if not confirmed:
+                raise click.UsageError("Operation cancelled by user")
+
+        tokens = _operation_step_to_cli_tokens(op, calling_agent or "unknown")
+        cmd_name, cmd, cmd_args = root.resolve_command(ctx, tokens)
+        cmd_ctx = root.make_context("sanctum", tokens, resilient_parsing=False)
+        try:
+            cmd.invoke(cmd_ctx)
+        except (click.ClickException, click.exceptions.Exit, SystemExit):
+            raise
+        except Exception as e:
+            error_output = f"Execution error: {e}"
+            failed = "sanctum " + shlex.join(tokens)
+            explanation = explain_error(
+                failed, error_output, root=root, calling_agent=calling_agent, router=router
+            )
+            if explanation.status == "assist_suggestion" and explanation.generated_command:
+                click.echo(render_explanation_text(explanation))
+                tokens2 = _command_tokens_from_string(explanation.generated_command)
+                cmd2_name, cmd2, cmd2_args = root.resolve_command(ctx, tokens2)
+                cmd2_ctx = root.make_context("sanctum", tokens2, resilient_parsing=False)
+                cmd2.invoke(cmd2_ctx)
+            else:
+                raise
+
+
+def _operation_step_to_cli_tokens(step: OperationStep, agent: str) -> list[str]:
+    tokens = ["--agent", agent, step.domain, step.action]
+    for key, value in step.parameters.items():
+        flag = "--" + key.replace("_", "-")
+        if isinstance(value, bool):
+            if value:
+                tokens.append(flag)
+        else:
+            tokens.extend([flag, str(value)])
+    return tokens
+
+
+def _command_tokens_from_string(command: str) -> list[str]:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return []
+    if tokens and tokens[0].endswith("sanctum"):
+        return tokens[1:]
+    return tokens
 
 
 _RISK_ICONS: dict[str, str] = {
