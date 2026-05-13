@@ -339,3 +339,114 @@ def test_router_fallback_skipped_when_no_calling_agent(httpx_mock):
 
     assert explanation.status == "assist_unsupported"
     assert explanation.error_class == "unsupported_error"
+
+
+def test_explain_error_option_alias_title_to_subject():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create --title 'AI panel' --description 'desc'",
+        "Error: No such option: --title",
+        root=main,
+    )
+
+    assert explanation.status == "assist_suggestion"
+    assert explanation.error_class == "option_alias"
+    assert "--subject" in explanation.generated_command
+    assert "--title" not in explanation.generated_command
+    assert explanation.confidence == 0.95
+    assert explanation.generated_command == (
+        "sanctum --agent surgeon tickets create --subject 'AI panel' --description desc"
+    )
+
+
+def test_explain_error_option_alias_priority_medium_to_normal():
+    """medium is mapped to normal in the ENUM_VALUE_ALIASES table."""
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create --subject Test --description desc "
+        "--priority medium --ticket-type task",
+        "Error: Invalid value for '--priority': 'medium' is not one of 'low', 'normal', "
+        "'high', 'critical'.",
+        root=main,
+    )
+
+    assert explanation.status == "assist_suggestion"
+    assert "assist_suggestion"
+    assert "--priority normal" in explanation.generated_command
+
+
+def test_explain_error_option_alias_falls_through_when_no_match():
+    explanation = explain_error(
+        "sanctum --agent surgeon tickets create --foobar value",
+        "Error: No such option: --foobar",
+        root=main,
+    )
+
+    assert explanation.status == "assist_unsupported"
+    assert explanation.generated_command is None
+
+
+class TestAutoRecoveryExecution:
+    """Full integration tests for auto-recovery executing corrected commands."""
+
+    TICKET_URL = "https://core.digitalsanctum.com.au/api/tickets"
+
+    def test_recovery_executes_corrected_ticket_create(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/products?limit=100",
+            json={"products": []},
+        )
+        httpx_mock.add_response(
+            method="POST",
+            url=self.TICKET_URL,
+            json={"id": 99, "subject": "AI panel fix"},
+        )
+
+        from click.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--yes",
+                "--agent",
+                "surgeon",
+                "tickets",
+                "create",
+                "--title",
+                "AI panel fix",
+                "--description",
+                "Drawer should slide in from right",
+            ],
+            input="11111111-1111-4111-8111-111111111111\n",
+        )
+
+        assert result.exit_code == 0, f"exit {result.exit_code}: {result.output}"
+        assert "Ticket #99 created" in result.output
+
+        requests = httpx_mock.get_requests()
+        ticket_req = requests[-1]
+        import json
+
+        body = json.loads(ticket_req.read())
+        assert body["subject"] == "AI panel fix"
+        assert "--title" not in result.output
+
+    def test_raw_mode_does_not_recover(self, mock_agent_tokens):
+        from click.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--raw",
+                "--agent",
+                "surgeon",
+                "tickets",
+                "show",
+                "--json",
+                "3293",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "No such option" in result.output

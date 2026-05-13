@@ -17,6 +17,11 @@ class TestTicketCreate:
     def test_create_prompts_for_missing_account_uuid(self, httpx_mock, mock_agent_tokens):
         account_id = "11111111-1111-4111-8111-111111111111"
         httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/products?limit=100",
+            json={"products": []},
+        )
+        httpx_mock.add_response(
             method="POST",
             url=_TICKET_URL,
             json={"id": 42, "subject": "Test ticket"},
@@ -31,12 +36,18 @@ class TestTicketCreate:
         assert result.exit_code == 0
         assert "Ticket creation needs an account UUID" in result.output
         assert "Ticket #42 created" in result.output
-        request = httpx_mock.get_request()
-        assert request is not None
-        assert json.loads(request.read())["account_id"] == account_id
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 2
+        ticket_req = requests[1]
+        assert json.loads(ticket_req.read())["account_id"] == account_id
 
     def test_create_searches_and_confirms_client_name(self, httpx_mock, mock_agent_tokens):
         account_id = "22222222-2222-4222-8222-222222222222"
+        httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/products?limit=100",
+            json={"products": []},
+        )
         httpx_mock.add_response(
             method="GET",
             url=f"{_SEARCH_URL}?q=Acme&type=client&limit=5",
@@ -68,8 +79,8 @@ class TestTicketCreate:
         assert "Acme Pty Ltd" in result.output
         assert "Ticket #43 created" in result.output
         requests = httpx_mock.get_requests()
-        assert len(requests) == 2
-        assert json.loads(requests[1].read())["account_id"] == account_id
+        assert len(requests) == 3
+        assert json.loads(requests[2].read())["account_id"] == account_id
 
 
 class TestTicketShow:

@@ -66,6 +66,15 @@ SINGULAR_GROUPS = {
     "rate-card": "rate-cards",
 }
 
+OPTION_ALIASES: dict[tuple[str, str, str], str] = {
+    ("tickets", "create", "--title"): "--subject",
+}
+
+ENUM_VALUE_ALIASES: dict[tuple[str, str, str], dict[str, str]] = {
+    ("tickets", "create", "--priority"): {"medium": "normal", "moderate": "normal"},
+    ("tickets", "update", "--priority"): {"medium": "normal", "moderate": "normal"},
+}
+
 
 @dataclass(frozen=True)
 class AssistExplanation:
@@ -216,6 +225,7 @@ def explain_error(
     explanation = (
         _explain_global_flag(tokens, parsed)
         or _explain_did_you_mean(tokens, parsed)
+        or _explain_option_alias(tokens, parsed, root)
         or _explain_schema_unknown_flag(tokens, parsed, root)
         or _explain_singular_group(tokens, parsed)
         or _explain_missing_option(parsed)
@@ -374,6 +384,61 @@ def _explain_global_flag(tokens: list[str], parsed: ParsedCliError) -> AssistExp
         confidence=0.98,
         needs_confirmation=False,
         message=f"Move {flag} before the command group.",
+        details={"parsed_error": parsed.to_dict()},
+    )
+
+
+def _explain_option_alias(
+    tokens: list[str], parsed: ParsedCliError, root: click.Group | None
+) -> AssistExplanation | None:
+    if not root:
+        return None
+
+    path = _command_path(tokens)
+    if len(path) < 2:
+        return None
+    domain, action = path[0], path[1]
+
+    corrected = list(tokens)
+    made_changes = False
+
+    for i, token in enumerate(corrected):
+        if not token.startswith("--"):
+            continue
+        key = (domain, action, token)
+        if key in OPTION_ALIASES:
+            corrected[i] = OPTION_ALIASES[key]
+            made_changes = True
+
+    for i, token in enumerate(corrected):
+        if not token.startswith("--"):
+            continue
+        enum_key = (domain, action, token)
+        if enum_key in ENUM_VALUE_ALIASES and i + 1 < len(corrected):
+            value = corrected[i + 1]
+            aliases = ENUM_VALUE_ALIASES[enum_key]
+            if value in aliases:
+                corrected[i + 1] = str(aliases[value])
+                made_changes = True
+
+    if not made_changes:
+        return None
+
+    risk = "write"
+    if len(path) >= 2:
+        action_part = path[1]
+        if action_part in READ_ACTIONS:
+            risk = "read"
+
+    return AssistExplanation(
+        status="assist_suggestion",
+        error_class="option_alias",
+        inferred_intent=f"Run {domain} {action} with canonical option names.",
+        generated_command=_format_command(corrected),
+        risk=risk,
+        confidence=0.95,
+        needs_confirmation=False,
+        message=f"Replaced known option aliases in {domain} {action}.",
         details={"parsed_error": parsed.to_dict()},
     )
 

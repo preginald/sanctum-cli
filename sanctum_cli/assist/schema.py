@@ -28,6 +28,7 @@ class ParameterSchema:
     is_flag: bool = False
     multiple: bool = False
     nargs: int = 1
+    inferable: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,7 +84,9 @@ def _iter_commands(group: click.Group, prefix: tuple[str, ...] = ()) -> list[Com
                 is_group=is_group,
                 expected_agent=_expected_agent(path),
                 aliases=tuple(getattr(command, "aliases", ())),
-                parameters=tuple(_parameter_schema(param) for param in command.params),
+                parameters=tuple(
+                    _parameter_schema(param, path=path) for param in command.params
+                ),
             )
         )
         if isinstance(command, click.Group):
@@ -91,7 +94,15 @@ def _iter_commands(group: click.Group, prefix: tuple[str, ...] = ()) -> list[Com
     return commands
 
 
-def _parameter_schema(param: click.Parameter) -> ParameterSchema:
+_INFERENCE_HINTS: dict[tuple[str, str, str], bool] = {
+    ("tickets", "create", "account_id"): True,
+    ("tickets", "create", "project_id"): True,
+    ("tickets", "create", "milestone_id"): True,
+    ("tickets", "create", "product_ids"): True,
+}
+
+
+def _parameter_schema(param: click.Parameter, path: tuple[str, ...] = ()) -> ParameterSchema:
     param_type = param.type
     choices: tuple[str, ...] = ()
     if isinstance(param_type, click.Choice):
@@ -106,9 +117,11 @@ def _parameter_schema(param: click.Parameter) -> ParameterSchema:
         is_flag = bool(param.is_flag)
 
     default = None if isinstance(param.default, Sentinel) else param.default
+    param_name = param.name or ""
+    inferable = _INFERENCE_HINTS.get((*path, param_name), False)
 
     return ParameterSchema(
-        name=param.name or "",
+        name=param_name,
         kind="option" if isinstance(param, click.Option) else "argument",
         required=bool(param.required),
         type=param_type.name,
@@ -119,6 +132,7 @@ def _parameter_schema(param: click.Parameter) -> ParameterSchema:
         is_flag=is_flag,
         multiple=bool(param.multiple),
         nargs=param.nargs,
+        inferable=inferable,
     )
 
 

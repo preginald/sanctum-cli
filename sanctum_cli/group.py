@@ -1,7 +1,6 @@
 """Custom Click group with alias support and 'did you mean' suggestions."""
 
 import shlex
-import sys
 
 import click
 
@@ -22,7 +21,7 @@ _GLOBAL_FLAGS: dict[str, str] = {
 
 
 class HelpfulGroup(click.Group):
-    """Click group with alias support and 'did you mean' suggestions.
+    """Click group with alias support, auto-recovery, and 'did you mean' suggestions.
 
     Pass a ``suggestions`` dict when defining the group to map unknown
     command names to a hint string:
@@ -36,6 +35,8 @@ class HelpfulGroup(click.Group):
         def tickets():
             ...
     """
+
+    _recovery_in_progress: bool = False
 
     def __init__(self, *args, suggestions=None, **kwargs):
         self.suggestions = suggestions or {}
@@ -133,52 +134,146 @@ class HelpfulGroup(click.Group):
 
     def _recover_from_error(
         self, ctx: click.Context, failed_command: str, error_output: str
-    ) -> None:
-        if _raw_mode(ctx) or not _assist_enabled(ctx):
-            return
-        explanation = explain_error(
-            failed_command,
-            error_output,
-            calling_agent=ctx.find_root().obj.get("resolved_agent"),
-            router=get_router_client(),
-        )
-        if explanation.status == "assist_suggestion" and explanation.generated_command:
-            if ctx.find_root().obj.get("output_json"):
-                print_json(explanation.to_dict())
-            else:
+    ) -> bool:
+        """Attempt to recover a failed CLI invocation.
+
+        On success raises ``Exit(0)``. On handled failure (explanation shown,
+        confirmation denied, execution error) raises ``Exit(1)``.  Returns
+        ``False`` only when recovery is skipped (re-entry guard), allowing the
+        caller to fall through to default error handling.
+        """
+        if self._recovery_in_progress:
+            return False
+        self._recovery_in_progress = True
+        try:
+            root_cmd = ctx.find_root().command
+            explanation = explain_error(
+                failed_command,
+                error_output,
+                root=root_cmd if isinstance(root_cmd, click.Group) else None,
+                calling_agent=ctx.find_root().obj.get("resolved_agent"),
+                router=get_router_client(),
+            )
+
+            if not explanation.generated_command:
                 click.echo(render_explanation_text(explanation))
+                raise click.exceptions.Exit(1)
+
+            tokens = self._tokens_from_command(explanation.generated_command)
+            if not tokens:
+                click.echo(render_explanation_text(explanation))
+                raise click.exceptions.Exit(1)
+
+            if _assist_enabled(ctx):
+                if ctx.find_root().obj.get("output_json"):
+                    print_json(explanation.to_dict())
+                else:
+                    click.echo(render_explanation_text(explanation))
+                raise click.exceptions.Exit(1)
+
+            needs_confirm = explanation.needs_confirmation or explanation.risk in (
+                "write",
+                "external_effect",
+                "destructive",
+            )
+            root_yes = ctx.find_root().obj.get("yes")
+            if needs_confirm and not root_yes:
+                click.echo(f"Recovered: {explanation.generated_command}")
+                click.echo("Execute? [y/N]: ", nl=False)
+                try:
+                    confirmed = click.getchar().lower() == "y"
+                except Exception:
+                    confirmed = False
+                click.echo()
+                if not confirmed:
+                    raise click.exceptions.Exit(1)
+
+            root = ctx.find_root().command
+            if isinstance(root, click.Command):
+                try:
+                    root.main(args=tokens, standalone_mode=False)
+                    raise click.exceptions.Exit(0)
+                except (click.ClickException, click.exceptions.Exit, SystemExit):
+                    raise
+                except Exception as exc:
+                    click.echo(f"Recovery execution failed: {exc}", err=True)
+                    raise click.exceptions.Exit(1) from exc
+
             raise click.exceptions.Exit(1)
-        elif explanation.status == "assist_missing_fields":
-            click.echo(render_explanation_text(explanation))
-            raise click.exceptions.Exit(1)
+        finally:
+            self._recovery_in_progress = False
+
+    @staticmethod
+    def _tokens_from_command(command: str) -> list[str]:
+        try:
+            tokens = shlex.split(command)
+        except ValueError:
+            return []
+        if tokens and tokens[0].endswith("sanctum"):
+            return tokens[1:]
+        return tokens
+
+    def _build_failed_command(
+        self,
+        ctx: click.Context,
+        option_name: str | None,
+        extra_args: list[str] | None = None,
+    ) -> str:
+        tokens: list[str] = []
+        root = ctx.find_root()
+        root_params = root.params
+        if root_params.get("assist"):
+            tokens.append("--assist")
+        if root_params.get("env"):
+            tokens.extend(["--env", root_params["env"]])
+        if root_params.get("agent"):
+            tokens.extend(["--agent", root_params["agent"]])
+        if root_params.get("user"):
+            tokens.extend(["--user", root_params["user"]])
+        if root_params.get("yes"):
+            tokens.append("--yes")
+        if root_params.get("output_json"):
+            tokens.append("--json")
+        if root_params.get("debug"):
+            tokens.append("--debug")
+
+        command_parts = ctx.command_path.split()[1:]
+        tokens.extend(command_parts)
+        sub = ctx.invoked_subcommand
+        if sub and (not extra_args or extra_args[0] != sub):
+            tokens.append(sub)
+        if extra_args:
+            tokens.extend(extra_args)
+        elif option_name:
+            tokens.append(option_name)
+        return "sanctum " + shlex.join(tokens)
 
     def invoke(self, ctx: click.Context) -> object:
         self._run_pre_flight_validation(ctx)
+        _original_args = list(ctx.args) if ctx.args else []
         try:
             result = super().invoke(ctx)
             if isinstance(result, dict) and "error" in result:
                 err_detail = result.get("detail", {})
                 if isinstance(err_detail, dict) and err_detail.get("detail"):
-                    failed = _failed_command(ctx, None)
+                    failed = self._build_failed_command(ctx, None, _original_args)
                     self._recover_from_error(ctx, failed, str(err_detail["detail"]))
             return result
         except click.NoSuchOption as e:
             if _raw_mode(ctx):
                 raise
-
-            if _assist_enabled(ctx):
-                failed_command = _failed_command(ctx, e.option_name)
-                self._recover_from_error(
-                    ctx, failed_command, f"Error: No such option: {e.option_name}"
-                )
-                raise click.exceptions.Exit(1) from e
-
+            if self._recover_from_error(
+                ctx,
+                self._build_failed_command(ctx, e.option_name, _original_args),
+                f"Error: No such option: {e.option_name}",
+            ):
+                return
             hint = _GLOBAL_FLAGS.get(e.option_name)
             if hint:
                 raise click.UsageError(
                     f"No such option: {e.option_name}\n"
                     f"\n"
-                    f"Hint: {e.option_name} is a global flag — place it before the"
+                    f"Hint: {e.option_name} is a global flag \u2014 place it before the"
                     f" command name.\n"
                     f"\n"
                     f"  Correct:  {hint}"
@@ -187,18 +282,20 @@ class HelpfulGroup(click.Group):
         except click.UsageError as e:
             if _raw_mode(ctx):
                 raise
-            if _assist_enabled(ctx):
-                failed_command = _failed_command(ctx, None)
-                self._recover_from_error(ctx, failed_command, e.format_message())
-                raise click.exceptions.Exit(1) from e
+            self._recover_from_error(
+                ctx,
+                self._build_failed_command(ctx, None, _original_args),
+                e.format_message(),
+            )
             raise
         except click.BadParameter as e:
             if _raw_mode(ctx):
                 raise
-            if _assist_enabled(ctx):
-                failed_command = _failed_command(ctx, e.param.name if e.param else None)
-                self._recover_from_error(ctx, failed_command, e.format_message())
-                raise click.exceptions.Exit(1) from e
+            self._recover_from_error(
+                ctx,
+                self._build_failed_command(ctx, e.param.name if e.param else None, _original_args),
+                e.format_message(),
+            )
             raise
 
 
@@ -219,36 +316,3 @@ def _assist_enabled(ctx: click.Context) -> bool:
     if bool(root_obj.get("raw")):
         return False
     return bool(root_obj.get("assist"))
-
-
-def _failed_command(ctx: click.Context, option_name: str | None) -> str:
-    argv = "sanctum " + shlex.join(sys.argv[1:])
-    if option_name and option_name in argv:
-        return argv
-
-    root = ctx.find_root()
-    root_params = root.params
-    tokens: list[str] = []
-    if root_params.get("assist"):
-        tokens.append("--assist")
-    if root_params.get("env"):
-        tokens.extend(["--env", root_params["env"]])
-    if root_params.get("agent"):
-        tokens.extend(["--agent", root_params["agent"]])
-    if root_params.get("user"):
-        tokens.extend(["--user", root_params["user"]])
-    if root_params.get("yes"):
-        tokens.append("--yes")
-    if root_params.get("output_json"):
-        tokens.append("--json")
-    if root_params.get("debug"):
-        tokens.append("--debug")
-
-    command_parts = ctx.command_path.split()[1:]
-    tokens.extend(command_parts)
-    if ctx.invoked_subcommand:
-        tokens.append(ctx.invoked_subcommand)
-    if option_name:
-        tokens.append(option_name)
-    tokens.extend(ctx.args)
-    return "sanctum " + shlex.join(tokens)

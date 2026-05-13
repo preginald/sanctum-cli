@@ -15,6 +15,7 @@ from sanctum_cli.display import (
     print_table,
     print_warning,
 )
+from sanctum_cli.domains.ticket_resolver import AmbiguousEntity, TicketCreateResolver
 from sanctum_cli.group import HelpfulGroup
 from sanctum_client.client import get, post, put
 
@@ -284,17 +285,40 @@ def _resolve_missing_account_id(ctx: click.Context) -> str:
     return selected_account_id
 
 
+def _resolve_description(
+    description: str, description_file: str | None, description_stdin: bool
+) -> str:
+    sources = sum(1 for x in (description, description_file, description_stdin) if x)
+    if sources > 1:
+        raise click.ClickException(
+            "--description, --description-file, and --description-stdin are mutually exclusive."
+        )
+    if description_file:
+        if not os.path.isfile(description_file):
+            raise click.ClickException(f"Description file not found: {description_file}")
+        with open(description_file, encoding="utf-8") as f:
+            return f.read()
+    if description_stdin:
+        return click.get_text_stream("stdin").read()
+    return description
+
+
 @tickets.command()
 @click.option("--subject", "-s", required=True, help="Ticket subject")
-@click.option("--account-id", "-a", default=None, help="Account UUID (required)")
+@click.option(
+    "--account-id", "-a", default=None,
+    help="Account UUID (inferred from project/product if omitted)",
+)
 @click.option(
     "--project-id",
     "-p",
     default=None,
-    help="Project UUID (optional for multi-product tickets)",
+    help="Project UUID or name (optional for multi-product tickets)",
 )
-@click.option("--milestone-id", "-m", default=None, help="Milestone UUID")
-@click.option("--description", "-d", default="", help="Ticket description")
+@click.option("--milestone-id", "-m", default=None, help="Milestone UUID or name")
+@click.option("--description", "-d", default="", help="Ticket description (markdown)")
+@click.option("--description-file", default=None, help="Read description from file")
+@click.option("--description-stdin", is_flag=True, help="Read description from stdin")
 @click.option(
     "--priority", type=click.Choice(["low", "normal", "high", "critical"]), default="normal"
 )
@@ -331,6 +355,8 @@ def create(
     project_id: str | None,
     milestone_id: str | None,
     description: str,
+    description_file: str | None,
+    description_stdin: bool,
     priority: str,
     ticket_type: str,
     articles: tuple,
@@ -338,10 +364,39 @@ def create(
 ) -> None:
     """Create a new ticket."""
     check_command_identity("tickets", "create", ctx.obj.get("resolved_agent"))
+
+    description = _resolve_description(description, description_file, description_stdin)
+    description = _ensure_template_compliance(description, ticket_type)
+
+    resolver = TicketCreateResolver(ctx)
+    try:
+        resolved = resolver.resolve(
+            account_id=account_id,
+            project_id=project_id,
+            milestone_id=milestone_id,
+            product_ids=product_ids,
+            subject=subject,
+            description=description,
+        )
+    except AmbiguousEntity as exc:
+        if ctx.obj.get("output_json"):
+            print_json(resolver.print_ambiguous_json(exc))
+        else:
+            resolver.print_ambiguous_error(exc)
+        ctx.exit(1)
+        return
+
+    if not ctx.obj.get("output_json"):
+        resolver.print_warnings(resolved)
+
+    account_id = resolved.get("account_id")
+    project_id = resolved.get("project_id")
+    milestone_id = resolved.get("milestone_id")
+    product_ids = resolved.get("product_ids")
+
     if not account_id:
         account_id = _resolve_missing_account_id(ctx)
 
-    description = _ensure_template_compliance(description, ticket_type)
     payload = {
         "subject": subject,
         "account_id": account_id,
