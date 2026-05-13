@@ -6,13 +6,61 @@ import click
 
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_error, print_json, print_key_value, print_success, print_table
-from sanctum_client.client import get, put
+from sanctum_client.client import get, post, put
 
 
 @click.group()
 def products() -> None:
     """Manage products and services."""
     pass
+
+
+@products.command()
+@click.option("--name", "-n", required=True, help="Product name")
+@click.option("--description", "-d", default="", help="Product description")
+@click.option(
+    "--type",
+    "-t",
+    "product_type",
+    required=True,
+    help="Product type (hosting, service, hardware, platform, etc.)",
+)
+@click.option("--unit-price", default="0.00", help="Unit price (e.g. 99.00)")
+@click.option("--billing-frequency", default=None, help="Billing frequency (yearly, monthly, etc.)")
+@click.option("--is-recurring", is_flag=True, help="Set is_recurring to true")
+@click.option("--is-active/--inactive", default=True, help="Set product active state")
+@click.pass_context
+def create(
+    ctx: click.Context,
+    name: str,
+    description: str,
+    product_type: str,
+    unit_price: str,
+    billing_frequency: str | None,
+    is_recurring: bool,
+    is_active: bool,
+) -> None:
+    """Create a product/service."""
+    check_command_identity("products", "create", ctx.obj.get("resolved_agent"))
+
+    payload: dict = {
+        "name": name,
+        "description": description,
+        "type": product_type,
+        "unit_price": unit_price,
+        "is_recurring": is_recurring,
+        "is_active": is_active,
+    }
+    if billing_frequency is not None:
+        payload["billing_frequency"] = billing_frequency
+
+    result = post("/products", json=payload)
+    if ctx.obj.get("output_json"):
+        print_json(result)
+    elif isinstance(result, dict) and "id" in result:
+        print_success(f"Product created: {result.get('id')}")
+    else:
+        print_error(str(result))
 
 
 @products.command()
