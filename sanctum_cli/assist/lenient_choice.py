@@ -39,9 +39,7 @@ class LenientChoice(click.Choice):
                 key = variant if case_sensitive else variant.lower()
                 self.normalize_map[key] = canonical
 
-    def convert(
-        self, value: str, param: click.Parameter | None, ctx: click.Context | None
-    ) -> Any:
+    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context | None) -> Any:
         try:
             return super().convert(value, param, ctx)
         except click.BadParameter:
