@@ -1,6 +1,7 @@
 """Ticket domain commands."""
 
 import builtins
+import os
 import re
 
 import click
@@ -21,6 +22,38 @@ UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+
+_TEMPLATE_SECTIONS: dict[str, list[str]] = {
+    "feature": ["## Objective", "## Requirements", "## Test Plan", "## Acceptance Criteria"],
+    "task": ["## Objective", "## Requirements", "## Test Plan", "## Acceptance Criteria"],
+    "bug": [
+        "## Objective",
+        "## Steps to Reproduce",
+        "## Expected Behaviour",
+        "## Actual Behaviour",
+    ],
+    "test": ["## Objective", "## Test Plan", "## Expected Results", "## Acceptance Criteria"],
+}
+
+
+def _ensure_template_compliance(description: str | None, ticket_type: str) -> str:
+    """Wrap free-form descriptions into required template sections for the ticket type.
+
+    If the description already contains ## headings it is returned unchanged.
+    Otherwise the content is placed under ## Objective and any remaining
+    required sections are appended as empty stubs.
+    """
+    if not description:
+        return description or ""
+    required = _TEMPLATE_SECTIONS.get(ticket_type)
+    if not required:
+        return description
+    if re.search(r"^## ", description, re.MULTILINE):
+        return description
+    parts = [f"{required[0]}\n\n{description.strip()}"]
+    for section in required[1:]:
+        parts.append(f"\n\n{section}\n\n")
+    return "".join(parts)
 
 
 @click.group(
@@ -284,6 +317,7 @@ def create(
     if not account_id:
         account_id = _resolve_missing_account_id(ctx)
 
+    description = _ensure_template_compliance(description, ticket_type)
     payload = {
         "subject": subject,
         "account_id": account_id,
@@ -423,12 +457,28 @@ def list(
     print_table(["ID", "Subject", "Status", "Priority", "Type"], rows, title="Tickets")
 
 
+def _resolve_body(body: str | None, body_file: str | None) -> str:
+    """Return body text from string or file. Exactly one must be provided."""
+    if body_file:
+        if not os.path.isfile(body_file):
+            raise click.ClickException(f"Body file not found: {body_file}")
+        with open(body_file, encoding="utf-8") as f:
+            return f.read()
+    return body or ""
+
+
 @tickets.command()
 @click.argument("ticket_id", type=int)
-@click.option("--body", "-b", required=True, help="Comment text (markdown)")
+@click.option("--body", "-b", default=None, help="Comment text (markdown)")
+@click.option("--body-file", default=None, help="Read comment body from file")
 @click.pass_context
-def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
+def comment(ctx: click.Context, ticket_id: int, body: str | None, body_file: str | None) -> None:
     """Add a comment to a ticket."""
+    if not body and not body_file:
+        raise click.ClickException("Either --body or --body-file is required.")
+    if body and body_file:
+        raise click.ClickException("--body and --body-file are mutually exclusive.")
+    body = _resolve_body(body, body_file)
     check_command_identity("tickets", "comment", ctx.obj.get("resolved_agent"))
     before = get(f"/tickets/{ticket_id}")
     result = post("/comments", json={"ticket_id": ticket_id, "body": body})
@@ -560,9 +610,15 @@ def link_article(ctx: click.Context, ticket_id: int, article_id: str) -> None:
 
 @tickets.command()
 @click.argument("ticket_id", type=int)
-@click.option("--body", "-b", required=True, help="Resolution body (markdown)")
+@click.option("--body", "-b", default=None, help="Resolution body (markdown)")
+@click.option("--body-file", default=None, help="Read resolution body from file")
 @click.pass_context
-def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
+def resolve(ctx: click.Context, ticket_id: int, body: str | None, body_file: str | None) -> None:
+    if not body and not body_file:
+        raise click.ClickException("Either --body or --body-file is required.")
+    if body and body_file:
+        raise click.ClickException("--body and --body-file are mutually exclusive.")
+    body = _resolve_body(body, body_file)
     """Resolve a ticket (two-step: post resolution comment, then update status)."""
     check_command_identity("tickets", "resolve", ctx.obj.get("resolved_agent"))
 

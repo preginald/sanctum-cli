@@ -1,10 +1,13 @@
 """Tests for tickets domain commands."""
 
 import json
+import os
+import tempfile
 
 from click.testing import CliRunner
 
 from sanctum_cli.cli import main
+from sanctum_cli.domains.tickets import _ensure_template_compliance
 
 _TICKET_URL = "https://core.digitalsanctum.com.au/api/tickets"
 _SEARCH_URL = "https://core.digitalsanctum.com.au/api/search"
@@ -247,3 +250,191 @@ class TestTicketUpdate:
 
         assert result.exit_code != 0
         assert "phase criteria values must be true or false" in result.output
+
+
+class TestTemplateCompliance:
+    def test_free_form_feature_gets_wrapped(self):
+        result = _ensure_template_compliance("Fix the login bug", "feature")
+        assert "## Objective" in result
+        assert "## Requirements" in result
+        assert "## Test Plan" in result
+        assert "## Acceptance Criteria" in result
+        assert "Fix the login bug" in result
+
+    def test_free_form_task_gets_wrapped(self):
+        result = _ensure_template_compliance("Add dark mode toggle", "task")
+        assert "## Objective" in result
+        assert "Add dark mode toggle" in result
+
+    def test_free_form_test_gets_wrapped(self):
+        result = _ensure_template_compliance("Run smoke test", "test")
+        assert "## Objective" in result
+        assert "## Test Plan" in result
+        assert "## Expected Results" in result
+        assert "## Acceptance Criteria" in result
+
+    def test_already_structured_left_unchanged(self):
+        desc = "## Objective\n\nDo the thing\n\n## Requirements\n\nNone"
+        result = _ensure_template_compliance(desc, "feature")
+        assert result == desc
+
+    def test_empty_description_returns_empty(self):
+        assert _ensure_template_compliance("", "feature") == ""
+        assert _ensure_template_compliance(None, "feature") == ""
+
+    def test_unknown_type_returns_unchanged(self):
+        desc = "Just some text"
+        result = _ensure_template_compliance(desc, "support")
+        assert result == desc
+
+    def test_bug_template_has_steps_sections(self):
+        result = _ensure_template_compliance("Button not working", "bug")
+        assert "## Steps to Reproduce" in result
+        assert "## Expected Behaviour" in result
+        assert "## Actual Behaviour" in result
+
+
+class TestTicketCommentBodyFile:
+    def test_body_file_reads_content(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/tickets/3176",
+            json={"id": 3176, "status": "new"},
+        )
+        httpx_mock.add_response(
+            method="POST",
+            url="https://core.digitalsanctum.com.au/api/comments",
+            json={"id": "c1", "ticket_id": 3176, "body": "from file"},
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/tickets/3176",
+            json={"id": 3176, "status": "new"},
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("from file")
+            f.flush()
+            fname = f.name
+        try:
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "--agent",
+                    "surgeon",
+                    "tickets",
+                    "comment",
+                    "3176",
+                    "--body-file",
+                    fname,
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Comment added to #3176" in result.output
+        finally:
+            os.unlink(fname)
+
+    def test_body_file_not_found(self, mock_agent_tokens):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "tickets",
+                "comment",
+                "3176",
+                "--body-file",
+                "/nonexistent/file.md",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Body file not found" in result.output
+
+    def test_body_and_body_file_mutually_exclusive(self, mock_agent_tokens):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "tickets",
+                "comment",
+                "3176",
+                "--body",
+                "inline text",
+                "--body-file",
+                "/tmp/foo.md",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
+    def test_neither_body_nor_body_file_raises_error(self, mock_agent_tokens):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "--agent",
+                "surgeon",
+                "tickets",
+                "comment",
+                "3176",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Either --body or --body-file is required" in result.output
+
+
+class TestTicketResolveBodyFile:
+    FETCH_URL = "https://core.digitalsanctum.com.au/api/tickets/3176"
+    COMMENT_URL = "https://core.digitalsanctum.com.au/api/comments"
+    UPDATE_URL = "https://core.digitalsanctum.com.au/api/tickets/3176"
+
+    def test_resolve_body_file(self, httpx_mock, mock_agent_tokens):
+        httpx_mock.add_response(
+            method="GET",
+            url=self.FETCH_URL,
+            json={"id": 3176, "status": "pending", "available_transitions": ["resolved"]},
+        )
+        httpx_mock.add_response(
+            method="POST",
+            url=self.COMMENT_URL,
+            json={"id": "rc1", "ticket_id": 3176, "body": "from file"},
+        )
+        httpx_mock.add_response(
+            method="PUT",
+            url=self.UPDATE_URL,
+            json={"id": 3176, "status": "resolved"},
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("from file")
+            f.flush()
+            fname = f.name
+        try:
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "--agent",
+                    "architect",
+                    "tickets",
+                    "resolve",
+                    "3176",
+                    "--body-file",
+                    fname,
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Ticket #3176 resolved" in result.output
+        finally:
+            os.unlink(fname)
+
+    def test_resolve_neither_body_nor_body_file(self, mock_agent_tokens):
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["--agent", "architect", "tickets", "resolve", "3176"],
+        )
+        assert result.exit_code != 0
+        assert "Either --body or --body-file is required" in result.output
