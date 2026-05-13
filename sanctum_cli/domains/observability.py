@@ -1,6 +1,7 @@
 """Observability domain commands.
 
-Sanctum Router error recovery metrics and prompt improvement pipeline.
+Sanctum Router error recovery metrics, prompt improvement pipeline,
+and correction telemetry reports.
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 import click
 
 from sanctum_cli.assist.events import get_pattern_stats, query_events
+from sanctum_cli.assist.feedback import generate_correction_report
 from sanctum_cli.auth import check_command_identity
 from sanctum_cli.display import print_json, print_table
 
@@ -137,6 +139,57 @@ def prompt_insights(ctx: click.Context, period: str, min_confidence: float) -> N
         click.echo(f"    {i}. [{c['confidence']:.0%}] {c['suggestion']}")
         click.echo(f"       Evidence: {c['evidence']}")
         click.echo()
+
+
+@observability.command("correction-report")
+@click.option("--period", "-p", default="7d", help="Analysis period (e.g. 7d, 24h)")
+@click.option("--top", "-t", default=10, type=int, help="Number of top confusing commands")
+@click.pass_context
+def correction_report(ctx: click.Context, period: str, top: int) -> None:
+    """Show a structured correction telemetry report from the local event store."""
+    check_command_identity("observability", "correction-report", ctx.obj.get("resolved_agent"))
+
+    days = _parse_period(period)
+    report_data = generate_correction_report(period_days=days, top_n=top)
+
+    if ctx.obj.get("output_json"):
+        print_json(report_data)
+        return
+
+    click.echo()
+    click.echo(f"  Correction Report (period: {period})")
+    click.echo()
+
+    if report_data["status"] == "no_data":
+        click.echo("  No correction events recorded yet.")
+        click.echo("  Events are recorded when CLI Assist repairs malformed commands.")
+        click.echo()
+        return
+
+    r = report_data["report"]
+
+    click.echo(f"  Total events: {report_data['total_events']}")
+    click.echo()
+
+    top_cmds = r.get("top_confusing_commands", [])
+    if top_cmds:
+        cmd_rows = [[c["command"], str(c["errors"])] for c in top_cmds]
+        print_table(["Command", "Errors"], cmd_rows, title="Top Confusing Commands")
+
+    error_classes = r.get("error_classes", [])
+    if error_classes:
+        ec_rows = [[ec[0], str(ec[1])] for ec in error_classes]
+        print_table(["Error Class", "Count"], ec_rows, title="Error Classes")
+
+    pattern_freq = r.get("pattern_frequency", [])
+    if pattern_freq:
+        pf_rows = [[pf[0], str(pf[1])] for pf in pattern_freq]
+        print_table(["Pattern", "Count"], pf_rows, title="Pattern Frequency")
+
+    domain_breakdown = r.get("domain_breakdown", [])
+    if domain_breakdown:
+        db_rows = [[db[0], str(db[1])] for db in domain_breakdown]
+        print_table(["Domain", "Events"], db_rows, title="Events by Domain")
 
 
 def _generate_insight_candidates(events: list, min_confidence: float) -> list[dict]:

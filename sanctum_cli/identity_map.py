@@ -101,6 +101,7 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     # observability
     "observability.recovery-stats": None,
     "observability.prompt-insights": None,
+    "observability.correction-report": None,
     # sessions
     "sessions.create": None,
     "sessions.show": None,
