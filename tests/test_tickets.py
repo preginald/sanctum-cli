@@ -141,9 +141,19 @@ class TestTicketShow:
 class TestTicketComment:
     def test_add_comment(self, httpx_mock, mock_agent_tokens):
         httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/tickets/3176",
+            json={"id": 3176, "status": "new"},
+        )
+        httpx_mock.add_response(
             method="POST",
             url="https://core.digitalsanctum.com.au/api/comments",
             json={"id": "comment-new", "ticket_id": 3176, "body": "Pushback noted"},
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url="https://core.digitalsanctum.com.au/api/tickets/3176",
+            json={"id": 3176, "status": "new"},
         )
         runner = CliRunner()
         result = runner.invoke(
@@ -160,6 +170,7 @@ class TestTicketComment:
         )
         assert result.exit_code == 0
         assert "Comment added to #3176" in result.output
+        assert "View full history" in result.output
 
 
 class TestTicketUpdate:

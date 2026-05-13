@@ -41,6 +41,59 @@ def tickets() -> None:
     pass
 
 
+def _print_history_hint(ticket_id: int) -> None:
+    import click as _click
+
+    _click.echo(f"  View full history: sanctum tickets show --comments {ticket_id}")
+
+
+def _print_template_validation_help(result: dict) -> None:
+    if not isinstance(result, dict):
+        print_error(str(result))
+        return
+    detail = result.get("detail") or {}
+    if isinstance(detail, dict):
+        detail = detail.get("detail", detail)
+    missing = result.get("missing_sections", [])
+    if isinstance(detail, list):
+        for item in detail:
+            if isinstance(item, dict) and item.get("msg"):
+                msg = item["msg"]
+                if "section" in msg.lower():
+                    parsed = msg.split(":", 1)[-1].strip()
+                    if parsed:
+                        missing.append(parsed)
+    template_article = result.get("template_article", "")
+    lines = [str(result)]
+    if missing:
+        lines.append("\nMissing template sections:")
+        for s in missing:
+            lines.append(f"  - {s}")
+    if template_article:
+        lines.append(f"\nSee {template_article} for the required template format.")
+        lines.append(
+            "Include sections as top-level ## headings with blank lines after each heading."
+        )
+    print_error("\n".join(lines))
+
+
+def _check_status_change(ticket_id: int, before: dict) -> None:
+    if not isinstance(before, dict) or before.get("error"):
+        return
+    after = get(f"/tickets/{ticket_id}")
+    if not isinstance(after, dict):
+        return
+    before_status = before.get("status")
+    after_status = after.get("status")
+    if before_status and after_status and before_status != after_status:
+        import click as _click
+
+        _click.echo(
+            f"  Note: Ticket moved from {before_status} to {after_status}"
+            " (auto-transitioned on comment)"
+        )
+
+
 def _search_accounts(query: str) -> list[dict]:
     result = get("/search", params={"q": query, "type": "client", "limit": "5"})
     results = result if isinstance(result, builtins.list) else result.get("results", [])
@@ -201,9 +254,11 @@ def create(
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
-        print_success(f"Ticket #{result['id']} created: {result.get('subject', '')}")
+        created_id = result["id"]
+        print_success(f"Ticket #{created_id} created: {result.get('subject', '')}")
+        _print_history_hint(created_id)
     else:
-        print_error(str(result))
+        _print_template_validation_help(result)
 
 
 @tickets.command()
@@ -324,11 +379,14 @@ def list(
 def comment(ctx: click.Context, ticket_id: int, body: str) -> None:
     """Add a comment to a ticket."""
     check_command_identity("tickets", "comment", ctx.obj.get("resolved_agent"))
+    before = get(f"/tickets/{ticket_id}")
     result = post("/comments", json={"ticket_id": ticket_id, "body": body})
     if ctx.obj.get("output_json"):
         print_json(result)
     elif isinstance(result, dict) and "id" in result:
         print_success(f"Comment added to #{ticket_id}")
+        _check_status_change(ticket_id, before)
+        _print_history_hint(ticket_id)
     else:
         print_error(str(result))
 
@@ -428,6 +486,7 @@ def update(
             )
         else:
             print_success(f"Ticket #{ticket_id} updated")
+            _print_history_hint(ticket_id)
     else:
         print_error(str(result))
 
@@ -495,3 +554,4 @@ def resolve(ctx: click.Context, ticket_id: int, body: str) -> None:
         print_json(result)
     else:
         print_success(f"Ticket #{ticket_id} resolved")
+        _print_history_hint(ticket_id)
