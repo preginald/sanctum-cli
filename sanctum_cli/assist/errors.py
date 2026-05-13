@@ -9,13 +9,14 @@ from typing import Any
 
 import click
 
-from sanctum_cli.assist.events import RecoveryEvent, record_event
+from sanctum_cli.assist.events import RecoveryEvent, record_event, redact_command
 from sanctum_cli.assist.router_client import (
     RouterClient,
     RouterClientError,
     RouterInterpretResponse,
     RouterOperationPlanStep,
 )
+from sanctum_cli.assist.schema import build_cli_schema
 
 GLOBAL_FLAGS = {
     "--json",
@@ -177,6 +178,24 @@ def parse_cli_error(error_output: str) -> ParsedCliError:
     return ParsedCliError(error_class="unknown", message=output)
 
 
+def _derive_match_type(status: str) -> str:
+    if status.startswith("router_"):
+        return "router"
+    if status == "assist_unsupported":
+        return "unsupported"
+    return "deterministic"
+
+
+def _get_schema_digest(root: click.Group | None) -> str | None:
+    if root is None:
+        return None
+    try:
+        schema = build_cli_schema(root)
+        return schema.digest
+    except Exception:
+        return None
+
+
 def explain_error(
     failed_command: str,
     error_output: str,
@@ -184,6 +203,7 @@ def explain_error(
     root: click.Group | None = None,
     calling_agent: str | None = None,
     router: RouterClient | None = None,
+    schema_digest: str | None = None,
 ) -> AssistExplanation:
     """Explain a failed Sanctum command using deterministic repair patterns.
 
@@ -229,7 +249,15 @@ def explain_error(
     else:
         result = explanation
 
-    _record_recovery_event(result, calling_agent, tokens)
+    _record_recovery_event(
+        result,
+        calling_agent,
+        tokens,
+        failed_command_redacted=redact_command(failed_command) if failed_command else None,
+        match_type=_derive_match_type(result.status),
+        schema_digest=_get_schema_digest(root) if schema_digest is None else schema_digest,
+        cli_version=_get_cli_version(),
+    )
     return result
 
 
@@ -256,10 +284,27 @@ def render_explanation_text(explanation: AssistExplanation) -> str:
     return "\n".join(lines)
 
 
+def _get_cli_version() -> str:
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version("sanctum-cli")
+    except (ImportError, ModuleNotFoundError):
+        return "dev"
+
+
 def _record_recovery_event(
-    explanation: AssistExplanation, calling_agent: str | None, tokens: list[str]
+    explanation: AssistExplanation,
+    calling_agent: str | None,
+    tokens: list[str],
+    *,
+    failed_command_redacted: str | None = None,
+    match_type: str = "deterministic",
+    schema_digest: str | None = None,
+    cli_version: str = "dev",
 ) -> None:
     import contextlib
+    import uuid
 
     domain: str | None = None
     action: str | None = None
@@ -276,6 +321,7 @@ def _record_recovery_event(
     with contextlib.suppress(Exception):
         record_event(
             RecoveryEvent(
+                event_id=uuid.uuid4().hex,
                 pattern=explanation.error_class,
                 error_class=explanation.error_class,
                 inferred_intent=explanation.inferred_intent,
@@ -286,6 +332,13 @@ def _record_recovery_event(
                 calling_agent=calling_agent,
                 domain=domain,
                 action=action,
+                failed_command_redacted=failed_command_redacted,
+                corrected_operation=explanation.generated_command,
+                accepted=None,
+                match_type=match_type,
+                cli_version=cli_version,
+                schema_digest=schema_digest,
+                execution_risk=explanation.risk,
             )
         )
 

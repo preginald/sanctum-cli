@@ -92,6 +92,19 @@ def recovery_stats(ctx: click.Context, period: str) -> None:
             title="Pattern Effectiveness (live)",
         )
 
+    acceptance = stats.get("acceptance")
+    if acceptance:
+        a = acceptance["accepted"]
+        r = acceptance["rejected"]
+        p = acceptance["pending_feedback"]
+        total_with_feedback = a + r
+        click.echo()
+        click.echo(f"  User acceptance: {a} accepted, {r} rejected, {p} pending feedback")
+        if total_with_feedback > 0:
+            rate = a / total_with_feedback
+            click.echo(f"  Acceptance rate:  {rate:.0%}")
+        click.echo()
+
     if stats["by_domain"]:
         domain_rows = [[dom, str(cnt)] for dom, cnt in sorted(stats["by_domain"].items())]
         print_table(["Domain", "Events"], domain_rows, title="By Domain")
