@@ -970,13 +970,13 @@ def _explain_api_422_generic(error_output: str) -> AssistExplanation | None:
     return AssistExplanation(
         status="assist_missing_fields",
         error_class="api_422_error",
-        inferred_intent="Fix the validation error in the API request.",
+        inferred_intent="Interpret the request into a valid Sanctum CLI operation.",
         generated_command=None,
         risk="write",
         confidence=0.7,
         needs_confirmation=True,
-        message=f"API validation error: {error_output.strip()[:200]}. "
-        "Check required fields and value types before retrying.",
+        message=f"Router could not produce a valid operation plan: {error_output.strip()[:200]}. "
+        "Retry with exact CLI syntax or use a supported product/project name.",
     )
 
 
