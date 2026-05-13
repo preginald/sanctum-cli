@@ -250,30 +250,30 @@ def natural_language_execute(ctx: click.Context, intent: str) -> None:
                 raise click.UsageError("Operation cancelled by user")
 
         tokens = _operation_step_to_cli_tokens(op, calling_agent)
-        cmd_name, cmd, cmd_args = root.resolve_command(ctx, tokens)
-        cmd_ctx = root.make_context("sanctum", tokens, resilient_parsing=False)
+        full_tokens = ["--agent", calling_agent, *tokens]
         try:
-            cmd.invoke(cmd_ctx)
+            root.main(args=full_tokens, standalone_mode=False)
         except (click.ClickException, click.exceptions.Exit, SystemExit):
             raise
         except Exception as e:
             error_output = f"Execution error: {e}"
-            failed = "sanctum " + shlex.join(tokens)
+            failed = "sanctum " + shlex.join(full_tokens)
             explanation = explain_error(
                 failed, error_output, root=root, calling_agent=calling_agent, router=router
             )
             if explanation.status == "assist_suggestion" and explanation.generated_command:
                 click.echo(render_explanation_text(explanation))
                 tokens2 = _command_tokens_from_string(explanation.generated_command)
-                cmd2_name, cmd2, cmd2_args = root.resolve_command(ctx, tokens2)
-                cmd2_ctx = root.make_context("sanctum", tokens2, resilient_parsing=False)
-                cmd2.invoke(cmd2_ctx)
+                try:
+                    root.main(args=tokens2, standalone_mode=False)
+                except (click.ClickException, click.exceptions.Exit, SystemExit):
+                    raise
             else:
                 raise
 
 
 def _operation_step_to_cli_tokens(step: OperationStep, agent: str) -> list[str]:
-    tokens = ["--agent", agent, step.domain, step.action]
+    tokens = [step.domain, step.action]
     for key, value in step.parameters.items():
         flag = "--" + key.replace("_", "-")
         if isinstance(value, bool):
