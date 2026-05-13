@@ -50,6 +50,34 @@ Transitions are enforced server-side and depend on ticket type. Key rules:
 - From `pending` the ticket can go to `resolved` (requires time entry or material per Billable Item Gate).
 - Use `sanctum --json --agent surgeon tickets show <id>` to see `available_transitions` for any given ticket.
 
+## CLI Assist (`sanctum assist`)
+
+The `sanctum assist` command interprets natural-language intent into validated CLI operation plans via the Sanctum Router.
+
+**Requirements:**
+- `SANCTUM_ROUTER_TOKEN` (or `SANCTUM_ROUTER_JWT`) env var must be set.
+- Any agent identity can be used; `assist.assist` maps to `None` (no restriction).
+
+**Usage:**
+```bash
+sanctum --agent oracle assist "find milestones for Sanctum Router"
+sanctum --agent surgeon --json assist "list open tickets for project X"
+```
+
+**Outputs:**
+- Text mode: inferred intent, confidence, operation plan with risk icons, safety notes for write/external-effect operations.
+- JSON mode: structured payload with status, confidence, validation results, operation steps, and safety checks.
+
+**Safety:**
+- Read operations (`→`) display without confirmation.
+- Write (`✎`), external-effect (`⚡`), and destructive (`✗`) operations are flagged for confirmation.
+- Destructive operations are rejected by the validator.
+
+**Router token:** Retrieve if needed:
+```bash
+ssh sanctum-prod 'grep SANCTUM_ROUTER_TOKEN /var/www/sanctum-router/.env'
+```
+
 ## Sanctum Flow CLI (`sanctum flow`)
 
 - Commands: `list`, `show`, `definition-create`, `definition-update`, `definition-publish`, `lint`, `instance-create`, `context-update`, `instance-action`, `update-step`, `simulate`, `simulation-results`.

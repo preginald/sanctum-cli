@@ -51,7 +51,9 @@ def recovery_stats(ctx: click.Context, period: str) -> None:
 
     if stats["total_events"] == 0:
         click.echo("  No recovery events recorded yet.")
-        click.echo("  Events are recorded automatically when CLI Assist corrects malformed commands.")
+        click.echo(
+            "  Events are recorded automatically when CLI Assist corrects malformed commands."
+        )
         click.echo()
         click.echo("  Deterministic CLI repair patterns available:")
         print_table(
@@ -74,7 +76,14 @@ def recovery_stats(ctx: click.Context, period: str) -> None:
     if stats["patterns"]:
         rows = []
         for pat, info in sorted(stats["patterns"].items()):
-            rows.append([pat, f"{info['avg_confidence']:.0%}", f"{info['success_rate']:.0%}", str(info["count"])])
+            rows.append(
+                [
+                    pat,
+                    f"{info['avg_confidence']:.0%}",
+                    f"{info['success_rate']:.0%}",
+                    str(info["count"]),
+                ]
+            )
         print_table(
             ["Pattern", "Avg Confidence", "Success Rate", "Count"],
             rows,
@@ -130,9 +139,7 @@ def prompt_insights(ctx: click.Context, period: str, min_confidence: float) -> N
         click.echo()
 
 
-def _generate_insight_candidates(
-    events: list, min_confidence: float
-) -> list[dict]:
+def _generate_insight_candidates(events: list, min_confidence: float) -> list[dict]:
     candidates: list[dict] = []
     low_confidence = [e for e in events if e.confidence < min_confidence]
 
@@ -161,9 +168,7 @@ def _generate_insight_candidates(
                 "type": "parameter_alias",
                 "suggestion": "Review missing required option patterns for alias candidates",
                 "confidence": 0.82,
-                "evidence": (
-                    f"{len(missing_fields)} events with missing required options"
-                ),
+                "evidence": (f"{len(missing_fields)} events with missing required options"),
             }
         )
 

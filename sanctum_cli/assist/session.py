@@ -18,9 +18,7 @@ DEFAULT_SESSIONS_DIR = Path.home() / ".sanctum" / "sessions"
 class Message:
     role: str
     content: str
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -41,21 +39,15 @@ class Session:
     user: str | None
     messages: list[Message] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
-    updated_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def add_message(self, role: str, content: str) -> None:
         self.messages.append(Message(role=role, content=content))
         self.updated_at = datetime.now(UTC).isoformat()
 
     def recent_context(self, n: int = 5) -> list[dict[str, str]]:
-        return [
-            {"role": m.role, "content": m.content} for m in self.messages[-n:]
-        ]
+        return [{"role": m.role, "content": m.content} for m in self.messages[-n:]]
 
     def to_dict(self) -> dict[str, Any]:
         return {

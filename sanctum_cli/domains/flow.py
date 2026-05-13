@@ -221,7 +221,7 @@ def definition_create(
     if description:
         payload["description"] = description
     if schema is not None:
-        payload["schema_"] = schema
+        payload["definition_schema"] = schema
     if bpmn_file:
         with open(bpmn_file) as f:
             payload["bpmn_xml"] = f.read()
@@ -289,7 +289,7 @@ def definition_update(
     if description:
         payload["description"] = description
     if schema is not None:
-        payload["schema_"] = schema
+        payload["definition_schema"] = schema
     if bpmn_file:
         with open(bpmn_file) as f:
             payload["bpmn_xml"] = f.read()

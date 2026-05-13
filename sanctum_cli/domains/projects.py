@@ -36,6 +36,24 @@ def _resolve_project_id(project: str) -> str:
     raise click.ClickException(f"Project not found: {project}")
 
 
+def _filter_overview_open(result: dict) -> dict:
+    """Filter project overview to open milestones and tickets."""
+    milestones = result.get("milestones", [])
+    filtered = []
+    for m in milestones:
+        if m.get("status") in ("completed", "closed"):
+            continue
+        tickets = [t for t in m.get("tickets", []) if t.get("status") not in ("resolved", "closed")]
+        if not tickets:
+            continue
+        m = dict(m)
+        m["tickets"] = tickets
+        filtered.append(m)
+    result = dict(result)
+    result["milestones"] = filtered
+    return result
+
+
 @click.group()
 def projects() -> None:
     """Manage projects."""
@@ -104,21 +122,31 @@ def show(ctx: click.Context, project_id: str, expand: str | None) -> None:
 
 @projects.command()
 @click.argument("project_id")
+@click.option("--open-only", is_flag=True, help="Show only open milestones and tickets")
 @click.pass_context
-def overview(ctx: click.Context, project_id: str) -> None:
+def overview(ctx: click.Context, project_id: str, open_only: bool) -> None:
     """Get project overview with tickets grouped by milestone."""
     check_command_identity("projects", "overview", ctx.obj.get("resolved_agent"))
 
     project_id = _resolve_project_id(project_id)
     result = get(f"/projects/{project_id}", params={"expand": "overview"})
     if ctx.obj.get("output_json"):
+        if open_only:
+            result = _filter_overview_open(result)
         print_json(result)
         return
 
     milestones = result.get("milestones", [])
     for m in milestones:
+        tickets = m.get("tickets", [])
+        if open_only:
+            if m.get("status") in ("completed", "closed"):
+                continue
+            tickets = [t for t in tickets if t.get("status") not in ("resolved", "closed")]
+            if not tickets:
+                continue
         print_key_value({"Status": m.get("status", "")}, title=f"Milestone: {m.get('name', '')}")
-        for t in m.get("tickets", []):
+        for t in tickets:
             click.echo(f"  #{t['id']} [{t['status']}] {t['subject'][:70]}")
 
 

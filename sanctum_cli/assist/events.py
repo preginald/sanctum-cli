@@ -129,8 +129,7 @@ def get_pattern_stats(period_days: int = 7) -> dict[str, Any]:
     for pat, count in patterns.items():
         pattern_events = [e for e in events if e.pattern == pat]
         suggestions = [
-            e for e in pattern_events
-            if e.status in ("assist_suggestion", "router_interpreted")
+            e for e in pattern_events if e.status in ("assist_suggestion", "router_interpreted")
         ]
         success_rate = len(suggestions) / count if count > 0 else 0.0
         avg_confidence = sum(e.confidence for e in pattern_events) / count if count > 0 else 0.0

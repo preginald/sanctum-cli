@@ -75,12 +75,14 @@ def list(ctx: click.Context) -> None:
         return
     rows = []
     for s in all_sessions:
-        rows.append([
-            s.session_id[:8],
-            s.agent or "-",
-            str(len(s.messages)),
-            s.updated_at[:19],
-        ])
+        rows.append(
+            [
+                s.session_id[:8],
+                s.agent or "-",
+                str(len(s.messages)),
+                s.updated_at[:19],
+            ]
+        )
     print_table(
         ["ID", "Agent", "Messages", "Updated"],
         rows,
