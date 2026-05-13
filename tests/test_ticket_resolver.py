@@ -138,11 +138,7 @@ class TestResolverMilestone:
         httpx_mock.add_response(
             method="GET",
             url=f"{_API_BASE}/milestones?project_id={_PROJECT_UUID}",
-            json={
-                "milestones": [
-                    {"id": _MILESTONE_UUID, "name": "Phase 2", "status": "active"}
-                ]
-            },
+            json={"milestones": [{"id": _MILESTONE_UUID, "name": "Phase 2", "status": "active"}]},
         )
         _mock_account_inference_project(httpx_mock)
         resolver = _resolver()
@@ -534,7 +530,7 @@ class TestDescriptionFile:
         desc_file.write_text(
             "**Problem**\nThe `AiAssistant` component renders inconsistently.\n"
             "`fixed right-0` should be applied.\n"
-            "Contains `backticks`, $(dollar), and \"quotes\"."
+            'Contains `backticks`, $(dollar), and "quotes".'
         )
         runner = CliRunner()
         result = runner.invoke(

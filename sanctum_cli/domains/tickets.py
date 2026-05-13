@@ -306,7 +306,9 @@ def _resolve_description(
 @tickets.command()
 @click.option("--subject", "-s", required=True, help="Ticket subject")
 @click.option(
-    "--account-id", "-a", default=None,
+    "--account-id",
+    "-a",
+    default=None,
     help="Account UUID (inferred from project/product if omitted)",
 )
 @click.option(

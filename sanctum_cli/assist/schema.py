@@ -84,9 +84,7 @@ def _iter_commands(group: click.Group, prefix: tuple[str, ...] = ()) -> list[Com
                 is_group=is_group,
                 expected_agent=_expected_agent(path),
                 aliases=tuple(getattr(command, "aliases", ())),
-                parameters=tuple(
-                    _parameter_schema(param, path=path) for param in command.params
-                ),
+                parameters=tuple(_parameter_schema(param, path=path) for param in command.params),
             )
         )
         if isinstance(command, click.Group):

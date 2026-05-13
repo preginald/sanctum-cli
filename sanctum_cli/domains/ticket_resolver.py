@@ -104,7 +104,8 @@ class TicketCreateResolver:
             results = result if isinstance(result, builtins.list) else result.get("results", [])
             projects = [r for r in results if r.get("type") in ("project", None)]
             exact = [
-                p for p in projects
+                p
+                for p in projects
                 if (p.get("title") or p.get("name") or "").lower() == name.lower()
             ]
             if exact:
@@ -168,9 +169,7 @@ class TicketCreateResolver:
                     m = api_get(f"/milestones/{milestone_id}")
                     if isinstance(m, dict) and m.get("project_id"):
                         result["project_id"] = m["project_id"]
-                        warnings.append(
-                            f"Inferred project_id {m['project_id']} from milestone"
-                        )
+                        warnings.append(f"Inferred project_id {m['project_id']} from milestone")
                 except Exception:
                     pass
             return milestone_id
@@ -243,10 +242,7 @@ class TicketCreateResolver:
         if len(partial) == 1:
             return partial[0]
         if len(partial) > 1:
-            candidates = [
-                {"id": p.get("id"), "name": p.get("name", "")}
-                for p in partial[:5]
-            ]
+            candidates = [{"id": p.get("id"), "name": p.get("name", "")} for p in partial[:5]]
             raise AmbiguousEntity(
                 f"Multiple products match {name!r}",
                 candidates=candidates,
