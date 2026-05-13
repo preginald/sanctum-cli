@@ -55,7 +55,7 @@ def _print_template_validation_help(result: dict) -> None:
     if isinstance(detail, dict):
         detail = detail.get("detail", detail)
     missing = result.get("missing_sections", [])
-    if isinstance(detail, list):
+    if isinstance(detail, builtins.list):
         for item in detail:
             if isinstance(item, dict) and item.get("msg"):
                 msg = item["msg"]
