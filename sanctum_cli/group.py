@@ -68,6 +68,9 @@ class HelpfulGroup(click.Group):
         try:
             return super().invoke(ctx)
         except click.NoSuchOption as e:
+            if _raw_mode(ctx):
+                raise
+
             if _assist_enabled(ctx):
                 failed_command = _failed_command(ctx, e.option_name)
                 explanation = explain_error(
@@ -95,8 +98,15 @@ class HelpfulGroup(click.Group):
             raise
 
 
+def _raw_mode(ctx: click.Context) -> bool:
+    root_obj = ctx.find_root().obj or {}
+    return bool(root_obj.get("raw"))
+
+
 def _assist_enabled(ctx: click.Context) -> bool:
     root_obj = ctx.find_root().obj or {}
+    if bool(root_obj.get("raw")):
+        return False
     return bool(root_obj.get("assist"))
 
 

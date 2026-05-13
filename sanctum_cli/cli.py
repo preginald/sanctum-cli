@@ -29,6 +29,7 @@ log = logging.getLogger(__name__)
 )
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 @click.option("--assist", is_flag=True, help="Enable CLI Assist for this invocation")
+@click.option("--raw", is_flag=True, hidden=True, help="Bypass Router via direct Click execution")
 @click.option("--json", "output_json", is_flag=True, help="Output raw JSON")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.pass_context
@@ -39,6 +40,7 @@ def main(
     user: str | None,
     yes: bool,
     assist: bool,
+    raw: bool,
     output_json: bool,
     debug: bool,
 ) -> None:
@@ -52,6 +54,7 @@ def main(
     ctx.obj["user"] = user
     ctx.obj["yes"] = yes
     ctx.obj["assist"] = assist or os.getenv("SANCTUM_CLI_ASSIST") == "1"
+    ctx.obj["raw"] = raw
     ctx.obj["output_json"] = output_json
     ctx.obj["root_group"] = main
 
