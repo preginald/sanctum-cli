@@ -216,6 +216,8 @@ def natural_language_execute(ctx: click.Context, intent: str) -> None:
     """Interpret natural language intent via Router and execute the operation plan."""
     ctx.ensure_object(dict)
     root_params = ctx.find_root().params or {}
+    if root_params.get("yes") and not ctx.obj.get("yes"):
+        ctx.obj["yes"] = True
     calling_agent = ctx.obj.get("resolved_agent") or root_params.get("agent") or "unknown"
     root = _get_root_group(ctx)
     schema = build_cli_schema(root)
