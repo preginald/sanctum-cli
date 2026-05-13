@@ -178,7 +178,9 @@ def assist(ctx: click.Context, intent: str) -> None:
 
 def natural_language_execute(ctx: click.Context, intent: str) -> None:
     """Interpret natural language intent via Router and execute the operation plan."""
-    calling_agent = ctx.obj.get("resolved_agent")
+    ctx.ensure_object(dict)
+    root_params = ctx.find_root().params or {}
+    calling_agent = ctx.obj.get("resolved_agent") or root_params.get("agent") or "unknown"
     root = _get_root_group(ctx)
     schema = build_cli_schema(root)
 
@@ -188,7 +190,7 @@ def natural_language_execute(ctx: click.Context, intent: str) -> None:
 
     response = router.interpret_intent(
         intent=intent,
-        calling_agent=calling_agent or "unknown",
+        calling_agent=calling_agent,
         root=root,
     )
 
@@ -209,7 +211,7 @@ def natural_language_execute(ctx: click.Context, intent: str) -> None:
             if not confirmed:
                 raise click.UsageError("Operation cancelled by user")
 
-        tokens = _operation_step_to_cli_tokens(op, calling_agent or "unknown")
+        tokens = _operation_step_to_cli_tokens(op, calling_agent)
         cmd_name, cmd, cmd_args = root.resolve_command(ctx, tokens)
         cmd_ctx = root.make_context("sanctum", tokens, resilient_parsing=False)
         try:

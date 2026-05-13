@@ -1,0 +1,72 @@
+[
+  {
+    "id": "tier3_ctx_obj_none",
+    "ticket": "To-be-created",
+    "description": "Tier 3 natural-language execution crashes with AttributeError when ctx.obj is None",
+    "observed_date": "2026-05-13",
+    "failed_command": "sanctum --agent oracle --json \"find the Sanctum CLI product\"",
+    "error_class": "AttributeError",
+    "error_message": "'NoneType' object has no attribute 'get'",
+    "root_cause": "resolve_command calls natural_language_execute before root callback initializes ctx.obj",
+    "fix": "Added ctx.ensure_object(dict) before natural_language_execute call in resolve_command",
+    "fix_commit": "current session",
+    "fix_tested": true,
+    "regression_test": "Invoke sanctum with natural language, verify no AttributeError for ctx.obj"
+  },
+  {
+    "id": "tickets_comment_status_mutation",
+    "ticket": "To-be-created",
+    "description": "tickets comment unexpectedly moves ticket from new to implementation",
+    "observed_date": "2026-05-13",
+    "failed_command": "sanctum --agent surgeon tickets comment 3532 -b \"This is a test comment.\"",
+    "error_class": "unexpected_lifecycle_mutation",
+    "error_message": "Commenting on a ticket changed its status from new to implementation without explicit -s flag",
+    "root_cause": "Needs investigation — possible lifecycle automation trigger or side-effect in Core API",
+    "fix": "Needs investigation",
+    "fix_commit": null,
+    "fix_tested": false,
+    "regression_test": "Comment on a new ticket, verify status remains new"
+  },
+  {
+    "id": "ticket_create_account_id_required",
+    "ticket": "To-be-created",
+    "description": "tickets create --help does not mark --account-id as required, but API requires it",
+    "observed_date": "2026-05-13",
+    "failed_command": "sanctum --agent surgeon tickets create --subject \"test\" --ticket-type test",
+    "error_class": "help_metadata_mismatch",
+    "error_message": "Click option is not marked required=True, but API rejects without it",
+    "root_cause": "account-id click option param has required=False but API validation requires account_id",
+    "fix": "Needs investigation — either mark required=True in Click, or make API accept product-only tickets",
+    "fix_commit": null,
+    "fix_tested": false,
+    "regression_test": "tickets create --help shows [required] for --account-id"
+  },
+  {
+    "id": "template_validation_incremental",
+    "ticket": "To-be-created",
+    "description": "Test template validation returns missing sections incrementally, not all at once",
+    "observed_date": "2026-05-13",
+    "failed_command": "sanctum --agent surgeon tickets create --subject \"test\" --ticket-type test --description \"## Objective\\n\\nTest\"",
+    "error_class": "incremental_validation",
+    "error_message": "First attempt reported 3 missing sections, second attempt reported 1 more",
+    "root_cause": "API validates template sections one round at a time instead of returning all missing fields",
+    "fix": "Needs investigation — likely Core API side, not CLI",
+    "fix_commit": null,
+    "fix_tested": false,
+    "regression_test": "Create test ticket with no template sections, verify all missing sections in one response"
+  },
+  {
+    "id": "tier3_router_422_unhandled",
+    "ticket": "To-be-created",
+    "description": "Tier 3 natural language execution shows raw traceback when Router returns 422",
+    "observed_date": "2026-05-13",
+    "failed_command": "sanctum --agent oracle \"show system help and available commands\"",
+    "error_class": "RouterClientError",
+    "error_message": "Router interpretation failed with HTTP 422",
+    "root_cause": "Router could not map intent to a known schema; unhandled exception propagates as traceback instead of user-friendly message",
+    "fix": "Wrap natural_language_execute call in resolve_command with try/except, raise UsageError with message",
+    "fix_commit": "current session",
+    "fix_tested": false,
+    "regression_test": "Invoke with unmappable intent, verify user-friendly error not traceback"
+  }
+]

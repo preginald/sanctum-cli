@@ -66,8 +66,12 @@ class HelpfulGroup(click.Group):
                 ) from None
             if _raw_mode(ctx):
                 raise
+            ctx.ensure_object(dict)
             intent = " ".join(args)
-            natural_language_execute(ctx, intent)
+            try:
+                natural_language_execute(ctx, intent)
+            except Exception as exc:
+                raise click.UsageError(str(exc)) from None
             raise click.exceptions.Exit(0) from None
 
     def _run_pre_flight_validation(self, ctx: click.Context) -> None:
