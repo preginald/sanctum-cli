@@ -73,7 +73,7 @@ def test_flow_definition_create_posts_schema(httpx_mock, mock_agent_tokens):
     payload = json.loads(request.read())
     assert payload["account_id"] == _ACCOUNT_ID
     assert payload["definition_key"] == "hello"
-    assert payload["schema_"]["steps"][0]["key"] == "start"
+    assert payload["definition_schema"]["steps"][0]["key"] == "start"
 
 
 def test_flow_show_instance_expands_steps_and_events(httpx_mock, mock_agent_tokens):
