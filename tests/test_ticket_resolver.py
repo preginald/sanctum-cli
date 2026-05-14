@@ -361,6 +361,27 @@ class TestResolverAccount:
         )
         assert result["account_id"] == other_account
 
+    def test_account_defaults_to_digital_sanctum_hq_when_product_lookup_fails(self, httpx_mock):
+        """Product-linked ticket without resolvable account defaults to DS HQ."""
+        httpx_mock.add_response(
+            method="GET",
+            url=f"{_API_BASE}/products/{_PRODUCT_UUID}",
+            json={
+                "id": _PRODUCT_UUID,
+                "name": "Sanctum CLI",
+            },
+        )
+        resolver = _resolver()
+        result = resolver.resolve(
+            account_id=None,
+            project_id=None,
+            milestone_id=None,
+            product_ids=_PRODUCT_UUID,
+            subject="Test",
+            description="",
+        )
+        assert result["account_id"] == "dbc2c7b9-d8c2-493f-a6ed-527f7d191068"
+
 
 # ---------------------------------------------------------------------------
 # Integration tests — full command path with JSON mode

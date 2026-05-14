@@ -17,6 +17,8 @@ UUID_RE = re.compile(
 
 _RESOLUTION_WARNINGS = "_resolution_warnings"
 
+_DIGITAL_SANCTUM_HQ_ACCOUNT = "dbc2c7b9-d8c2-493f-a6ed-527f7d191068"
+
 
 class AmbiguousEntity(click.ClickException):
     """Raised when entity resolution has multiple candidates."""
@@ -339,6 +341,11 @@ class TicketCreateResolver:
                         return aid
             except Exception:
                 pass
+            # Product-linked ticket without a resolvable account — default to Digital Sanctum HQ
+            warnings.append(
+                f"Defaulting account_id to Digital Sanctum HQ ({_DIGITAL_SANCTUM_HQ_ACCOUNT})"
+            )
+            return _DIGITAL_SANCTUM_HQ_ACCOUNT
         return None
 
     # ------------------------------------------------------------------
