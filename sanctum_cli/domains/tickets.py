@@ -598,14 +598,12 @@ def comment(ctx: click.Context, ticket_id: int, body: str | None, body_file: str
     help="New status (triaging requires WIKI-034)",
 )
 @click.option("--subject", default=None, help="New subject")
+@click.option("--description", "-d", default=None, help="New description (markdown)")
 @click.option("--priority", type=click.Choice(["low", "normal", "high", "critical"]), default=None)
 @click.option("--assigned-tech-id", default=None, help="Assigned tech UUID")
 @click.option("--resolution-comment-id", default=None, help="Resolution comment UUID")
 @click.option(
-    "--product-ids",
-    "-P",
-    default=None,
-    help="Product IDs (comma-separated) for multi-product tickets",
+    "--product-ids", "-P", default=None, help="Product IDs (comma-separated) for multi-product tickets"
 )
 @click.option(
     "--phase-criteria",
@@ -619,6 +617,7 @@ def update(
     ticket_id: int,
     status: str | None,
     subject: str | None,
+    description: str | None,
     priority: str | None,
     assigned_tech_id: str | None,
     resolution_comment_id: str | None,
@@ -632,6 +631,8 @@ def update(
         payload["status"] = status
     if subject:
         payload["subject"] = subject
+    if description:
+        payload["description"] = description
     if priority:
         payload["priority"] = priority
     if assigned_tech_id:

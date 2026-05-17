@@ -87,8 +87,6 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "forms.submissions.delete": None,
     "forms.submissions.update": None,
     "forms.submissions.share-token": None,
-    # assist
-    "assist.assist": None,
     # capture_execute
     "capture_execute.capture": None,
     "capture_execute.execute": None,
@@ -98,16 +96,6 @@ DOMAIN_AGENT_MAP: dict[str, str | None] = {
     "contacts.set-password": "surgeon",
     "contacts.update": "surgeon",
     "contacts.provision-cms-sso": "surgeon",
-    # observability
-    "observability.recovery-stats": None,
-    "observability.prompt-insights": None,
-    "observability.correction-report": None,
-    # sessions
-    "sessions.create": None,
-    "sessions.show": None,
-    "sessions.list": None,
-    "sessions.delete": None,
-    "sessions.clear-expired": None,
     # flow
     "flow.list": None,
     "flow.show": None,

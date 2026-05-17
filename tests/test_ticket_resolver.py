@@ -509,31 +509,6 @@ class TestResolverIntegrationJsonMode:
 
 
 # ---------------------------------------------------------------------------
-# Schema inference metadata
-# ---------------------------------------------------------------------------
-
-
-class TestSchemaInference:
-    def test_ticket_create_account_id_is_inferable(self):
-        from sanctum_cli.assist.schema import build_cli_schema
-
-        schema = build_cli_schema(main)
-        cmd = None
-        for c in schema.commands:
-            if c.path == ("tickets", "create"):
-                cmd = c
-                break
-        assert cmd is not None, "tickets create not found in schema"
-        account_param = None
-        for p in cmd.parameters:
-            if p.name == "account_id":
-                account_param = p
-                break
-        assert account_param is not None, "account_id param not found"
-        assert account_param.inferable is True
-
-
-# ---------------------------------------------------------------------------
 # Description file — shell-safe Markdown transport
 # ---------------------------------------------------------------------------
 
