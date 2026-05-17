@@ -603,7 +603,10 @@ def comment(ctx: click.Context, ticket_id: int, body: str | None, body_file: str
 @click.option("--assigned-tech-id", default=None, help="Assigned tech UUID")
 @click.option("--resolution-comment-id", default=None, help="Resolution comment UUID")
 @click.option(
-    "--product-ids", "-P", default=None, help="Product IDs (comma-separated) for multi-product tickets"
+    "--product-ids",
+    "-P",
+    default=None,
+    help="Product IDs (comma-separated) for multi-product tickets",
 )
 @click.option(
     "--phase-criteria",
